@@ -114,8 +114,16 @@ async function handleCoachSubmit(event) {
     // Hide typing indicator
     VerdaDOM.toggleCoachLoading(false);
 
-    // Render bot advice
-    VerdaDOM.renderCoachMessage('bot', response.advice);
+    // Format the response text with recommendations listed
+    let botMessage = response.advice;
+    if (response.recommendations && response.recommendations.length > 0) {
+      response.recommendations.forEach((rec) => {
+        botMessage += `\n\n👉 Recommendation: ${rec.recommendation}\nReason: ${rec.reason}\nMonthly Savings: ${rec.estimatedReduction} kg CO₂ (Confidence: ${rec.confidence}%)`;
+      });
+    }
+
+    // Render bot advice and recommendations
+    VerdaDOM.renderCoachMessage('bot', botMessage);
 
   } catch (error) {
     VerdaDOM.toggleCoachLoading(false);

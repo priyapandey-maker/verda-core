@@ -912,6 +912,7 @@ footer {
   line-height: 1.5;
   animation: fadeIn 0.25s ease-out;
   word-wrap: break-word;
+  white-space: pre-wrap;
 }
 
 .chat-bubble.bot {

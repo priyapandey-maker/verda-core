@@ -206,7 +206,17 @@ describe('Verda Frontend Integration & Accessibility Suite', () => {
     });
 
     test('should submit coach question form and call API', async () => {
-      const mockResponse = { advice: 'Here is some tailored advice from Gemini.' };
+      const mockResponse = {
+        advice: 'Here is some tailored advice from Gemini.',
+        recommendations: [
+          {
+            recommendation: 'Test recommendation text',
+            reason: 'Test reason text',
+            estimatedReduction: 10,
+            confidence: 95
+          }
+        ]
+      };
       jest.spyOn(VerdaAPI, 'askCoach').mockResolvedValue(mockResponse);
 
       const input = document.getElementById('input-coach-question');
@@ -221,9 +231,13 @@ describe('Verda Frontend Integration & Accessibility Suite', () => {
       const history = document.getElementById('chat-history-container');
       // Bubble 1: Initial chat bot bubble
       // Bubble 2: User question "How can I save carbon?"
-      // Bubble 3: Bot advice bubble
+      // Bubble 3: Bot advice bubble with formatted recommendations list
       expect(history.children.length).toBe(3);
-      expect(history.children[2].textContent).toBe('Here is some tailored advice from Gemini.');
+      expect(history.children[2].textContent).toContain('Here is some tailored advice from Gemini.');
+      expect(history.children[2].textContent).toContain('Test recommendation text');
+      expect(history.children[2].textContent).toContain('Test reason text');
+      expect(history.children[2].textContent).toContain('10 kg CO₂');
+      expect(history.children[2].textContent).toContain('95%');
     });
 
     test('should enforce character limit on coach form question', async () => {
