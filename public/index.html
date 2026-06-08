@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Verda - Carbon Footprint Tracking & Awareness Dashboard. Understand, track, and reduce your daily carbon emissions.">
-  <title>Verda - Carbon Footprint Dashboard</title>
+  <meta name="description" content="Verda - Carbon Footprint Tracking, Projections & What-If Simulator Dashboard. Understand, track, and simulate daily carbon reduction impacts.">
+  <title>Verda - Carbon Footprint Dashboard & Simulator</title>
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-  <!-- Skip link for keyboard accessibility -->
+  <!-- Accessibility Skip link -->
   <a href="#dashboard-main" class="skip-link">Skip to main content</a>
 
   <div class="container">
@@ -24,14 +24,13 @@
 
     <main id="dashboard-main" class="dashboard-grid" role="main">
       
-      <!-- LEFT COLUMN: STATS AND METRICS -->
+      <!-- LEFT COLUMN: STATS, BREAKDOWN, AND WHAT-IF SIMULATOR -->
       <div class="dashboard-col col-left">
         
         <!-- SUSTAINABILITY SCORE CARD -->
         <section class="card glass score-card" aria-labelledby="score-title">
           <h2 id="score-title" class="card-title">Sustainability Score</h2>
           <div class="score-display">
-            <!-- SVG Circular Gauge -->
             <svg class="score-ring" viewBox="0 0 120 120" width="120" height="120" aria-hidden="true">
               <circle class="score-ring-bg" cx="60" cy="60" r="52" />
               <circle class="score-ring-fill" id="score-ring-fill" cx="60" cy="60" r="52" stroke-dasharray="326.7" stroke-dashoffset="326.7" />
@@ -63,51 +62,149 @@
           </div>
 
           <div class="breakdown-bars">
-            <!-- Transportation Bar -->
             <div class="bar-group" id="bar-group-transportation">
               <div class="bar-header">
                 <span class="bar-label"><span class="bullet transport"></span> Transportation</span>
                 <span class="bar-value-label" id="emissions-transport-val">0.0 kg</span>
               </div>
               <div class="bar-track">
-                <div class="bar-fill transport" id="bar-fill-transport" style="width: 0%;" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Transportation carbon breakdown"></div>
+                <div class="bar-fill transport" id="bar-fill-transport" style="width: 0%;" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Transportation percentage"></div>
               </div>
             </div>
 
-            <!-- Electricity Bar -->
             <div class="bar-group" id="bar-group-electricity">
               <div class="bar-header">
                 <span class="bar-label"><span class="bullet electricity"></span> Electricity</span>
                 <span class="bar-value-label" id="emissions-electricity-val">0.0 kg</span>
               </div>
               <div class="bar-track">
-                <div class="bar-fill electricity" id="bar-fill-electricity" style="width: 0%;" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Electricity carbon breakdown"></div>
+                <div class="bar-fill electricity" id="bar-fill-electricity" style="width: 0%;" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Electricity percentage"></div>
               </div>
             </div>
 
-            <!-- Food Bar -->
             <div class="bar-group" id="bar-group-food">
               <div class="bar-header">
                 <span class="bar-label"><span class="bullet food"></span> Food</span>
                 <span class="bar-value-label" id="emissions-food-val">0.0 kg</span>
               </div>
               <div class="bar-track">
-                <div class="bar-fill food" id="bar-fill-food" style="width: 0%;" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Food carbon breakdown"></div>
+                <div class="bar-fill food" id="bar-fill-food" style="width: 0%;" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Food percentage"></div>
               </div>
             </div>
           </div>
         </section>
+
+        <!-- WHAT-IF SIMULATOR CARD -->
+        <section class="card glass simulator-card" aria-labelledby="simulator-title">
+          <h2 id="simulator-title" class="card-title">What-If Simulator</h2>
+          <p class="section-desc">Adjust the sliders to simulate actions and see your projected carbon reduction instantly.</p>
+          
+          <div class="simulator-sliders">
+            <!-- Public Transit Slider -->
+            <div class="slider-group">
+              <div class="slider-header">
+                <label for="sim-transit">Replace Driving with Transit</label>
+                <span class="slider-value" id="sim-transit-val">0%</span>
+              </div>
+              <input type="range" id="sim-transit" min="0" max="100" value="0" step="5" aria-label="Percentage of driving trips to swap with public bus transit" class="sim-slider">
+            </div>
+
+            <!-- Veg Days Slider -->
+            <div class="slider-group">
+              <div class="slider-header">
+                <label for="sim-veg">Vegetarian Days / Week</label>
+                <span class="slider-value" id="sim-veg-val">0 days</span>
+              </div>
+              <input type="range" id="sim-veg" min="0" max="7" value="0" step="1" aria-label="Number of vegetarian days per week to substitute meat consumption" class="sim-slider">
+            </div>
+
+            <!-- Electricity Conservation Slider -->
+            <div class="slider-group">
+              <div class="slider-header">
+                <label for="sim-electricity">Reduce Home Power Usage</label>
+                <span class="slider-value" id="sim-electricity-val">0%</span>
+              </div>
+              <input type="range" id="sim-electricity" min="0" max="50" value="0" step="5" aria-label="Percentage reduction in household grid electricity usage" class="sim-slider">
+            </div>
+          </div>
+        </section>
+
       </div>
 
-      <!-- RIGHT COLUMN: LOGGER FORM AND HISTORY -->
+      <!-- RIGHT COLUMN: TWIN, EQUIVALENCE, LOGGER, AND HISTORY -->
       <div class="dashboard-col col-right">
         
+        <!-- CARBON TWIN VISUALIZATION CARD -->
+        <section class="card glass twin-card" aria-labelledby="twin-title">
+          <h2 id="twin-title" class="card-title">Carbon Twin Yearly Projection</h2>
+          <p class="section-desc">Your projected yearly emissions compared side-by-side with your simulated habits trajectory.</p>
+
+          <div class="twin-projections-container">
+            <!-- Trajectory values -->
+            <div class="projection-stats">
+              <div class="p-stat">
+                <span class="p-label">Current Trajectory</span>
+                <span class="p-value" id="twin-current-val">--</span>
+                <span class="p-unit">kg CO₂ / yr</span>
+              </div>
+              <div class="p-stat savings">
+                <span class="p-label">Simulated Savings</span>
+                <span class="p-value" id="twin-savings-val">0.0</span>
+                <span class="p-unit">kg CO₂ / yr</span>
+              </div>
+              <div class="p-stat improved">
+                <span class="p-label">Improved Trajectory</span>
+                <span class="p-value" id="twin-improved-val">--</span>
+                <span class="p-unit">kg CO₂ / yr</span>
+              </div>
+            </div>
+
+            <!-- Comparison bar charts -->
+            <div class="twin-charts">
+              <div class="twin-bar-group">
+                <div class="twin-bar-fill current" id="twin-bar-current" style="height: 100%;" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" aria-label="Current yearly carbon trajectory"></div>
+                <span class="twin-bar-label">Current</span>
+              </div>
+              <div class="twin-bar-group">
+                <div class="twin-bar-fill improved" id="twin-bar-improved" style="height: 100%;" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" aria-label="Improved yearly carbon trajectory"></div>
+                <span class="twin-bar-label">Improved</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- IMPACT SUMMARY CARD -->
+        <section class="card glass impact-card" aria-labelledby="impact-title">
+          <h2 id="impact-title" class="card-title">Simulated Impact Summary</h2>
+          <div class="impact-summary-content">
+            <p class="impact-header">If you adopt all selected changes:</p>
+            <div class="impact-headline">
+              Yearly CO₂ reduction: <span id="impact-co2-reduction">0.0</span> kg
+            </div>
+            
+            <p class="equivalence-header">Equivalent to:</p>
+            <ul class="equivalence-list">
+              <li>
+                <span class="eq-icon" aria-hidden="true">🌲</span>
+                <span class="eq-text"><strong id="impact-trees">0</strong> trees absorbing CO₂ for a year</span>
+              </li>
+              <li>
+                <span class="eq-icon" aria-hidden="true">🚗</span>
+                <span class="eq-text"><strong id="impact-km">0</strong> km not driven in a gasoline car</span>
+              </li>
+              <li>
+                <span class="eq-icon" aria-hidden="true">🏠</span>
+                <span class="eq-text"><strong id="impact-homes">0</strong> homes powered for a day</span>
+              </li>
+            </ul>
+          </div>
+        </section>
+
         <!-- LOG ACTIVITY CARD -->
         <section class="card glass logger-card" aria-labelledby="logger-title">
           <h2 id="logger-title" class="card-title">Log Daily Activity</h2>
           
           <form id="activity-form" novalidate>
-            <!-- Category Tabs (Coded accessibly as radio/button groups or fieldsets) -->
             <fieldset class="category-fieldset">
               <legend class="sr-only">Select Activity Category</legend>
               <div class="category-tabs" role="radiogroup" aria-label="Activity Category">
@@ -122,16 +219,12 @@
               </div>
             </fieldset>
 
-            <!-- Dynamic Input Panels -->
             <div class="form-inputs-container">
-              
-              <!-- Date Selector (Common) -->
               <div class="form-group">
                 <label for="input-date">Activity Date</label>
                 <input type="date" id="input-date" required>
               </div>
 
-              <!-- Transportation Panel -->
               <div id="panel-transportation" class="form-panel active">
                 <div class="form-group">
                   <label for="select-transport">Transport Type</label>
@@ -151,7 +244,6 @@
                 </div>
               </div>
 
-              <!-- Electricity Panel -->
               <div id="panel-electricity" class="form-panel">
                 <div class="form-group">
                   <label for="input-kwh">Power Consumption (kWh)</label>
@@ -159,7 +251,6 @@
                 </div>
               </div>
 
-              <!-- Food Panel -->
               <div id="panel-food" class="form-panel">
                 <div class="form-group">
                   <label for="select-food">Meal Type</label>
@@ -176,7 +267,6 @@
                   <input type="number" id="input-meals" min="1" step="1" placeholder="e.g. 1">
                 </div>
               </div>
-
             </div>
 
             <button type="submit" class="submit-btn" id="btn-submit-log">
@@ -211,7 +301,17 @@
 
     </main>
 
-    <!-- ACCESSIBLE SYSTEM NOTIFICATION LOG -->
+    <!-- PRIORITIZED RECOMMENDATIONS FULL WIDTH ROW -->
+    <section class="recommendations-row card glass" aria-labelledby="recs-title">
+      <h2 id="recs-title" class="card-title">Prioritized Eco-Recommendations</h2>
+      <p class="section-desc">Tailored high-impact suggestions rank-ordered by carbon reduction potential and ease of execution.</p>
+      
+      <div class="recs-grid" id="recommendations-grid">
+        <div class="recs-loading">Analyzing your footprint and loading suggestions...</div>
+      </div>
+    </section>
+
+    <!-- Accessible Notification center -->
     <div id="toast-container" aria-live="assertive" aria-atomic="true"></div>
 
     <footer role="contentinfo">
@@ -219,7 +319,6 @@
     </footer>
   </div>
 
-  <!-- Client-Side Scripts -->
   <script src="js/api.js"></script>
   <script src="js/dom.js"></script>
   <script src="js/app.js"></script>

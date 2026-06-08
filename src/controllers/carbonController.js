@@ -1,12 +1,16 @@
 const { getDb } = require('../db');
 
+// Named Constants for transportation emission factors (kg CO2 per km)
+const CAR_EMISSION_FACTOR = 0.18;
+const BUS_EMISSION_FACTOR = 0.08;
+
 // Core Emission Factors (kg CO2 equivalent per unit: km, kWh, or meal count)
 const EMISSION_FACTORS = {
   transportation: {
-    gasoline_car: 0.18,      // per km
+    gasoline_car: CAR_EMISSION_FACTOR,      // per km
     diesel_car: 0.17,        // per km
     electric_car: 0.05,      // per km
-    bus: 0.08,               // per km
+    bus: BUS_EMISSION_FACTOR,               // per km
     train: 0.04,             // per km
     flight: 0.25,            // per km
     walking_biking: 0.00     // per km
@@ -232,5 +236,7 @@ module.exports = {
   getLogs,
   getDashboard,
   calculateEmissions,
-  EMISSION_FACTORS
+  EMISSION_FACTORS,
+  CAR_EMISSION_FACTOR,
+  BUS_EMISSION_FACTOR
 };

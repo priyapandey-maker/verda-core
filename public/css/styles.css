@@ -13,14 +13,13 @@
 body {
   font-family: var(--font-family);
   background-color: var(--bg-primary);
-  background-image: radial-gradient(circle at 10% 20%, rgba(16, 185, 129, 0.05) 0%, transparent 45%),
-                    radial-gradient(circle at 95% 85%, rgba(20, 184, 166, 0.04) 0%, transparent 45%);
+  background-image: radial-gradient(circle at 12% 18%, rgba(16, 185, 129, 0.05) 0%, transparent 45%),
+                    radial-gradient(circle at 93% 82%, rgba(20, 184, 166, 0.04) 0%, transparent 45%);
   background-attachment: fixed;
   color: var(--text-primary);
   min-height: 100vh;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
-  position: relative;
 }
 
 a {
@@ -36,7 +35,6 @@ button, input, select {
   border: none;
 }
 
-/* Skip Link for A11y keyboard users */
 .skip-link {
   position: absolute;
   top: -100px;
@@ -54,14 +52,13 @@ button, input, select {
   outline: 3px solid var(--text-primary);
 }
 
-/* Focus States Utility */
 *:focus-visible {
   outline: 3px solid var(--accent-emerald);
   outline-offset: 3px;
 }
 
 /* ----------------------------------------------------
-   2. CONTAINERS & LAYOUTS
+   2. CONTAINERS & CARDS
 ---------------------------------------------------- */
 .container {
   max-width: 1300px;
@@ -101,7 +98,6 @@ header {
   color: var(--text-secondary);
 }
 
-/* Grid Layout */
 .dashboard-grid {
   display: grid;
   grid-template-columns: 420px 1fr;
@@ -115,7 +111,6 @@ header {
   gap: 2rem;
 }
 
-/* Glassmorphism Cards */
 .glass {
   background: rgba(30, 41, 59, 0.65);
   backdrop-filter: blur(16px);
@@ -138,13 +133,17 @@ header {
   font-size: 1.25rem;
   font-weight: 600;
   color: var(--text-primary);
+  margin-bottom: 0.5rem;
+}
+
+.section-desc {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
   margin-bottom: 1.5rem;
-  position: relative;
-  display: inline-block;
 }
 
 /* ----------------------------------------------------
-   3. SCORE WIDGET
+   3. SCORE & EMISSIONS BREAKDOWN
 ---------------------------------------------------- */
 .score-card {
   display: flex;
@@ -154,8 +153,8 @@ header {
 
 .score-display {
   position: relative;
-  width: 140px;
-  height: 140px;
+  width: 130px;
+  height: 130px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -164,8 +163,8 @@ header {
 
 .score-ring {
   transform: rotate(-90deg);
-  width: 140px;
-  height: 140px;
+  width: 130px;
+  height: 130px;
 }
 .score-ring-bg {
   fill: none;
@@ -185,20 +184,17 @@ header {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
 }
 .score-number {
   font-size: 2.25rem;
   font-weight: 700;
   line-height: 1;
-  color: var(--text-primary);
 }
 .score-label {
   font-size: 0.75rem;
   color: var(--text-secondary);
   margin-top: 2px;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
 .stats-grid {
@@ -228,9 +224,6 @@ header {
   color: var(--accent-teal);
 }
 
-/* ----------------------------------------------------
-   4. EMISSIONS BREAKDOWN
----------------------------------------------------- */
 .total-emissions-box {
   background: rgba(15, 23, 42, 0.4);
   border-radius: var(--radius-md);
@@ -244,13 +237,11 @@ header {
 .total-val {
   font-size: 2.25rem;
   font-weight: 700;
-  color: var(--text-primary);
-  line-height: 1;
 }
 .total-unit {
   font-size: 0.85rem;
   color: var(--text-secondary);
-  margin-top: 6px;
+  margin-top: 4px;
   text-transform: uppercase;
 }
 
@@ -289,7 +280,6 @@ header {
 
 .bar-value-label {
   font-weight: 600;
-  color: var(--text-primary);
 }
 
 .bar-track {
@@ -309,7 +299,222 @@ header {
 .bar-fill.food { background: var(--color-food); }
 
 /* ----------------------------------------------------
-   5. LOG ACTIVITY FORM
+   4. WHAT-IF SIMULATOR SLIDERS
+---------------------------------------------------- */
+.simulator-sliders {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.slider-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.slider-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.slider-value {
+  color: var(--accent-emerald);
+  font-weight: 600;
+}
+
+/* Custom styled inputs range */
+.sim-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  outline: none;
+  transition: background 0.3s;
+}
+.sim-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent-emerald);
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+  transition: transform 0.1s, background-color 0.2s;
+}
+.sim-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.25);
+  background: var(--accent-teal);
+}
+.sim-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent-emerald);
+  cursor: pointer;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+  transition: transform 0.1s, background-color 0.2s;
+}
+.sim-slider::-moz-range-thumb:hover {
+  transform: scale(1.25);
+  background: var(--accent-teal);
+}
+
+/* ----------------------------------------------------
+   5. CARBON TWIN PROJECTIONS & COMPARISONS
+---------------------------------------------------- */
+.twin-projections-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.projection-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 1rem;
+}
+
+.p-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.3);
+  padding: 1rem 0.5rem;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.02);
+}
+.p-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-align: center;
+  margin-bottom: 6px;
+}
+.p-value {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.p-unit {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+/* Color codes */
+.p-stat.savings .p-value { color: var(--accent-teal); }
+.p-stat.improved .p-value { color: var(--accent-emerald); }
+
+/* Comparison bar visualizer */
+.twin-charts {
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-end;
+  height: 180px;
+  background: rgba(15, 23, 42, 0.25);
+  border-radius: var(--radius-md);
+  padding: 1.5rem 1rem 0.5rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.twin-bar-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 70px;
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.twin-bar-fill {
+  width: 32px;
+  border-radius: 6px 6px 0 0;
+  transition: height 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+}
+.twin-bar-fill.current {
+  background: linear-gradient(180deg, #f87171 0%, #ef4444 100%);
+}
+.twin-bar-fill.improved {
+  background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+}
+
+.twin-bar-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-top: 10px;
+  font-weight: 500;
+}
+
+/* ----------------------------------------------------
+   6. IMPACT SUMMARY CARD & EQUIVALENCES
+---------------------------------------------------- */
+.impact-summary-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.impact-header {
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.impact-headline {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--accent-teal);
+  background: rgba(20, 184, 166, 0.1);
+  padding: 0.75rem 1.25rem;
+  border-radius: var(--radius-md);
+  border-left: 4px solid var(--accent-teal);
+}
+
+.equivalence-header {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 0.5rem;
+}
+
+.equivalence-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.equivalence-list li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.eq-icon {
+  font-size: 1.35rem;
+  background: rgba(255, 255, 255, 0.04);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.eq-text {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+.eq-text strong {
+  color: var(--text-primary);
+}
+
+/* ----------------------------------------------------
+   7. LOGGER FORM
 ---------------------------------------------------- */
 .logger-card form {
   display: flex;
@@ -317,7 +522,6 @@ header {
   gap: 1.5rem;
 }
 
-/* Category segmented selector */
 .category-fieldset {
   border: none;
 }
@@ -346,14 +550,12 @@ header {
   background: rgba(255, 255, 255, 0.02);
 }
 
-/* Radio button behavior mapped to styled tab buttons */
 input[type="radio"]:checked + .tab-btn {
   background: var(--bg-secondary);
   color: var(--accent-emerald);
   box-shadow: var(--shadow-sm);
 }
 
-/* Dynamic input fields layout */
 .form-inputs-container {
   display: flex;
   flex-direction: column;
@@ -384,7 +586,6 @@ input[type="radio"]:checked + .tab-btn {
   box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.15);
 }
 
-/* Form panels visibility */
 .form-panel {
   display: none;
   flex-direction: column;
@@ -395,7 +596,6 @@ input[type="radio"]:checked + .tab-btn {
   display: flex;
 }
 
-/* Submit Button */
 .submit-btn {
   background: var(--gradient-accent);
   color: var(--bg-primary);
@@ -412,9 +612,6 @@ input[type="radio"]:checked + .tab-btn {
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
 }
-.submit-btn:active {
-  transform: translateY(1px);
-}
 .submit-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
@@ -423,15 +620,11 @@ input[type="radio"]:checked + .tab-btn {
 }
 
 /* ----------------------------------------------------
-   6. HISTORY LIST TABLE
+   8. HISTORY LIST TABLE
 ---------------------------------------------------- */
-.history-card {
-  flex: 1;
-}
-
 .history-table-container {
   overflow-x: auto;
-  max-height: 380px;
+  max-height: 320px;
   overflow-y: auto;
   border-radius: var(--radius-sm);
 }
@@ -469,7 +662,6 @@ input[type="radio"]:checked + .tab-btn {
   padding: 2.5rem !important;
 }
 
-/* Row-specific elements */
 .impact-badge {
   font-weight: 700;
   padding: 2px 8px;
@@ -499,7 +691,98 @@ input[type="radio"]:checked + .tab-btn {
 }
 
 /* ----------------------------------------------------
-   7. TOAST MESSAGES
+   9. ECO-RECOMMENDATIONS ROW (NEW)
+---------------------------------------------------- */
+.recommendations-row {
+  grid-column: 1 / -1; /* spans full width */
+  margin-top: 1rem;
+}
+
+.recs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+.recs-loading {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: var(--text-muted);
+  padding: 2rem;
+}
+
+.rec-card {
+  background: rgba(15, 23, 42, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: var(--transition-smooth);
+}
+.rec-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(16, 185, 129, 0.15);
+}
+
+.rec-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.rec-card-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.badge-priority {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+.badge-priority.high {
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+}
+.badge-priority.medium {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.2);
+}
+.badge-priority.low {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.rec-reason {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.rec-metrics {
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  padding-top: 10px;
+  margin-top: auto;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.rec-m-val {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* ----------------------------------------------------
+   10. TOAST NOTIFICATIONS
 ---------------------------------------------------- */
 #toast-container {
   position: fixed;
@@ -529,7 +812,7 @@ input[type="radio"]:checked + .tab-btn {
 .toast.toast-warning { border-color: var(--color-warning); }
 
 /* ----------------------------------------------------
-   8. FOOTER & MISC
+   11. FOOTER & ANIMATIONS
 ---------------------------------------------------- */
 footer {
   margin-top: 4rem;
@@ -540,7 +823,6 @@ footer {
   font-size: 0.85rem;
 }
 
-/* Animations */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(5px); }
   to { opacity: 1; transform: translateY(0); }
@@ -552,7 +834,7 @@ footer {
 }
 
 /* ----------------------------------------------------
-   9. RESPONSIVE MEDIA QUERIES
+   12. RESPONSIVE MEDIA QUERIES
 ---------------------------------------------------- */
 @media (max-width: 1024px) {
   .dashboard-grid {
@@ -579,6 +861,10 @@ footer {
   }
   .stats-grid {
     gap: 1rem;
+  }
+  .projection-stats {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
   }
   .category-tabs {
     flex-direction: column;

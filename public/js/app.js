@@ -1,11 +1,15 @@
 /**
  * Verda Application Orchestrator
  */
+
+// Cache dashboard stats locally to enable sub-millisecond What-If simulator updates
+let cachedDashboardStats = null;
+
 document.addEventListener('DOMContentLoaded', () => {
   // Initialize form interaction panels and default date
   VerdaDOM.setupFormInteractions();
 
-  // Load initial dashboard metrics and history log lists
+  // Load initial dashboard metrics, recommendations, and log lists
   refreshDashboardData();
 
   // Bind activity logging form submission
@@ -13,25 +17,54 @@ document.addEventListener('DOMContentLoaded', () => {
   if (form) {
     form.addEventListener('submit', handleFormSubmit);
   }
+
+  // Bind input listeners to What-If Simulator range inputs
+  const sliders = document.querySelectorAll('.sim-slider');
+  sliders.forEach(slider => {
+    slider.addEventListener('input', updateSimulatorProjections);
+  });
 });
 
 /**
- * Refreshes dashboard data and logs list by querying REST APIs
+ * Refreshes dashboard data, recommendations, and logs list
  */
 async function refreshDashboardData(userId = 1) {
   try {
-    // 1. Fetch dashboard statistics
-    const dashData = await VerdaAPI.getDashboard(userId);
-    VerdaDOM.renderDashboard(dashData);
+    // 1. Fetch dashboard statistics and cache them
+    const stats = await VerdaAPI.getDashboard(userId);
+    cachedDashboardStats = stats;
+    
+    // Render dashboard widgets
+    VerdaDOM.renderDashboard(stats);
 
-    // 2. Fetch history logs
+    // Initial Twin projection calculations based on default slider states (0)
+    updateSimulatorProjections();
+
+    // 2. Fetch history logs list
     const logsData = await VerdaAPI.getLogs(userId);
     VerdaDOM.renderLogsList(logsData.logs);
+
+    // 3. Fetch prioritized recommendations list
+    const recsData = await VerdaAPI.getRecommendations(userId);
+    VerdaDOM.renderPrioritizedRecommendations(recsData.recommendations);
 
   } catch (error) {
     console.error('Failed to load dashboard data:', error);
     VerdaDOM.showToast('Failed to sync metrics with server. Please refresh.', 'error');
   }
+}
+
+/**
+ * Triggers re-calculation in What-If Simulator using sliders values
+ */
+function updateSimulatorProjections() {
+  if (!cachedDashboardStats) return;
+
+  const transit = parseInt(VerdaDOM.$('#sim-transit').value, 10) || 0;
+  const veg = parseInt(VerdaDOM.$('#sim-veg').value, 10) || 0;
+  const electricity = parseInt(VerdaDOM.$('#sim-electricity').value, 10) || 0;
+
+  VerdaDOM.renderTwinAndSimulator(cachedDashboardStats, { transit, veg, electricity });
 }
 
 /**
@@ -47,7 +80,6 @@ async function handleFormSubmit(event) {
   let activity = '';
   let value = 0;
 
-  // Gather specific inputs based on category
   if (activeCategory === 'transportation') {
     activity = VerdaDOM.$('#select-transport').value;
     const distanceInput = VerdaDOM.$('#input-distance');
@@ -62,7 +94,6 @@ async function handleFormSubmit(event) {
     value = parseInt(mealsInput.value, 10);
   }
 
-  // Client-side Input Validation
   if (!dateValue) {
     VerdaDOM.showToast('Please select a valid date.', 'warning');
     return;
@@ -73,35 +104,30 @@ async function handleFormSubmit(event) {
   }
 
   try {
-    // Disable submit button during request
     if (submitBtn) {
       submitBtn.disabled = true;
       submitBtn.textContent = 'Logging...';
     }
 
     const payload = {
-      user_id: 1, // Single-user MVP default
+      user_id: 1,
       activity_date: dateValue,
       category: activeCategory,
       activity,
       value
     };
 
-    const result = await VerdaAPI.logActivity(payload);
+    await VerdaAPI.logActivity(payload);
 
-    // Reset input fields
     resetInputs();
-
-    // Show success notification
     VerdaDOM.showToast('Activity logged successfully!', 'success');
 
-    // Refresh dashboard stats and logs list
+    // Refresh everything
     await refreshDashboardData(1);
 
   } catch (error) {
     VerdaDOM.showToast(error.message || 'Failed to log activity. Try again.', 'error');
   } finally {
-    // Re-enable submit button
     if (submitBtn) {
       submitBtn.disabled = false;
       submitBtn.textContent = 'Log Activity';
@@ -110,7 +136,7 @@ async function handleFormSubmit(event) {
 }
 
 /**
- * Resets numeric input fields on form success
+ * Resets numeric inputs
  */
 function resetInputs() {
   const distance = VerdaDOM.$('#input-distance');
