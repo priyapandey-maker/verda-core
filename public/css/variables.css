@@ -1,0 +1,45 @@
+:root {
+  /* Color Palette - Vibrant Emerald & Modern Slate */
+  --bg-primary: #0f172a;       /* Slate 900 */
+  --bg-secondary: #1e293b;     /* Slate 800 */
+  --bg-tertiary: #334155;      /* Slate 700 */
+  
+  --text-primary: #f8fafc;     /* Slate 50 */
+  --text-secondary: #94a3b8;   /* Slate 400 */
+  --text-muted: #64748b;       /* Slate 500 */
+  
+  --accent-emerald: #10b981;   /* Emerald 500 */
+  --accent-emerald-hover: #059669;
+  --accent-teal: #14b8a6;      /* Teal 500 */
+  
+  /* Category Colors */
+  --color-transport: #38bdf8;  /* Light Blue */
+  --color-electricity: #fbbf24;/* Amber */
+  --color-food: #f87171;       /* Red */
+  
+  /* Status/Feedback Colors */
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-info: #3b82f6;
+
+  /* Gradient Schemes */
+  --gradient-emerald: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  --gradient-teal: linear-gradient(135deg, #0d9488 0%, #115e59 100%);
+  --gradient-dark: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+  --gradient-accent: linear-gradient(135deg, #10b981 0%, #14b8a6 100%);
+  --gradient-card: linear-gradient(145deg, #1e293b 0%, #1e293b 100%);
+
+  /* UI Spacing & Roundness */
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 30px;
+  
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  
+  --font-family: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
+  --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
