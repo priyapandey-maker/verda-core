@@ -5,8 +5,8 @@
   --bg-tertiary: #334155;      /* Slate 700 */
   
   --text-primary: #f8fafc;     /* Slate 50 */
-  --text-secondary: #94a3b8;   /* Slate 400 */
-  --text-muted: #64748b;       /* Slate 500 */
+  --text-secondary: #cbd5e1;   /* Slate 300 - WCAG AA compliant contrast ratio */
+  --text-muted: #94a3b8;       /* Slate 400 - Higher contrast ratio */
   
   --accent-emerald: #10b981;   /* Emerald 500 */
   --accent-emerald-hover: #059669;

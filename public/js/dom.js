@@ -2,9 +2,8 @@
  * Verda DOM Utilities and dynamic rendering engine
  */
 
-// Named constants for transportation emissions factors
-const CAR_EMISSION_FACTOR = 0.18;
-const BUS_EMISSION_FACTOR = 0.08;
+// Dynamic emission constants loaded from backend. Fallbacks defined on VerdaDOM
+
 
 const VerdaDOM = {
   // Select helper
@@ -28,7 +27,7 @@ const VerdaDOM = {
       dateInput.value = `${y}-${m}-${d}`;
     }
 
-    tabs.forEach(tab => {
+    tabs.forEach((tab, index) => {
       tab.addEventListener('click', () => {
         const value = this.$(`#${tab.getAttribute('for')}`).value;
         this.switchTab(value);
@@ -38,6 +37,22 @@ const VerdaDOM = {
         if (e.key === ' ' || e.key === 'Enter') {
           e.preventDefault();
           const radioId = tab.getAttribute('for');
+          const radio = this.$(`#${radioId}`);
+          radio.checked = true;
+          this.switchTab(radio.value);
+        } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+          e.preventDefault();
+          const nextIndex = (index + 1) % tabs.length;
+          tabs[nextIndex].focus();
+          const radioId = tabs[nextIndex].getAttribute('for');
+          const radio = this.$(`#${radioId}`);
+          radio.checked = true;
+          this.switchTab(radio.value);
+        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          const prevIndex = (index - 1 + tabs.length) % tabs.length;
+          tabs[prevIndex].focus();
+          const radioId = tabs[prevIndex].getAttribute('for');
           const radio = this.$(`#${radioId}`);
           radio.checked = true;
           this.switchTab(radio.value);
@@ -78,8 +93,17 @@ const VerdaDOM = {
   /**
    * Updates all dashboard text fields, SVG circular progress meter, and bar charts
    */
+  constants: {
+    CAR_EMISSION_FACTOR: 0.18,
+    BUS_EMISSION_FACTOR: 0.08
+  },
+
   renderDashboard(data) {
     if (!data) return;
+
+    if (data.constants) {
+      this.constants = data.constants;
+    }
 
     // Greeting
     const greeting = this.$('#user-greeting');
@@ -218,9 +242,12 @@ const VerdaDOM = {
     const transportEmissions = stats.category_breakdown.transportation || 0;
     const electricityEmissions = stats.category_breakdown.electricity || 0;
 
+    const carEF = this.constants.CAR_EMISSION_FACTOR || 0.18;
+    const busEF = this.constants.BUS_EMISSION_FACTOR || 0.08;
+
     // 1. Calculate savings using constants
     // Public Transport Swap savings
-    const transportYearlySavings = transportEmissions * (sliderValues.transit / 100) * ((CAR_EMISSION_FACTOR - BUS_EMISSION_FACTOR) / CAR_EMISSION_FACTOR) * 12;
+    const transportYearlySavings = transportEmissions * (sliderValues.transit / 100) * ((carEF - busEF) / carEF) * 12;
 
     // Veg Days savings (1 meal per veg day per week swapped, saves 5.5 kg CO2)
     const foodYearlySavings = sliderValues.veg * 5.5 * 52;
@@ -257,13 +284,106 @@ const VerdaDOM = {
 
     // 5. Update Impact Summary equivalence stats
     const trees = Math.round(totalYearlySavings / 22);
-    const km = Math.round(totalYearlySavings / CAR_EMISSION_FACTOR);
+    const km = Math.round(totalYearlySavings / carEF);
     const homes = Math.round(totalYearlySavings / 4.5);
 
     this.$('#impact-co2-reduction').textContent = totalYearlySavings.toFixed(1);
     this.$('#impact-trees').textContent = trees.toLocaleString();
     this.$('#impact-km').textContent = km.toLocaleString();
     this.$('#impact-homes').textContent = homes.toLocaleString();
+
+    // 6. Update tooltips text content
+    const tooltipCurrent = this.$('#tooltip-current');
+    const tooltipImproved = this.$('#tooltip-improved');
+    if (tooltipCurrent) {
+      tooltipCurrent.textContent = `${Math.round(currentTrajectoryYearly).toLocaleString()} kg CO₂/yr`;
+    }
+    if (tooltipImproved) {
+      tooltipImproved.textContent = `${Math.round(improvedTrajectoryYearly).toLocaleString()} kg CO₂/yr (Saved ${totalYearlySavings.toFixed(1)} kg)`;
+    }
+
+    // 7. Update Goal Tracker progress text and dashed overlay marker
+    const targetGoalInput = this.$('#input-target-goal');
+    if (targetGoalInput) {
+      const targetGoal = parseFloat(targetGoalInput.value) || 0;
+      this.renderGoalTracker(targetGoal, stats, totalYearlySavings);
+    }
+  },
+
+  /**
+   * Render target line and goal progress text on twin chart
+   */
+  renderGoalTracker(targetGoal, stats, simulatedSavings) {
+    const goalLine = this.$('#target-goal-line');
+    const goalLabel = this.$('#target-goal-label');
+    const progressText = this.$('#goal-progress-text');
+
+    if (!goalLine) return;
+
+    if (!targetGoal || targetGoal <= 0) {
+      goalLine.style.display = 'none';
+      if (progressText) progressText.style.display = 'none';
+      return;
+    }
+
+    const currentTrajectory = stats.active_days > 0 ? (stats.total_emissions_30d / 30 * 365) : stats.user.daily_baseline * 365;
+    const targetTrajectory = Math.max(0, currentTrajectory - targetGoal);
+    const pct = currentTrajectory > 0 ? Math.min(100, Math.max(0, Math.round((targetTrajectory / currentTrajectory) * 100))) : 0;
+
+    goalLine.style.display = 'block';
+    goalLine.style.bottom = `${pct}%`;
+    if (goalLabel) {
+      goalLabel.textContent = `Target: -${targetGoal} kg`;
+    }
+
+    if (progressText) {
+      progressText.style.display = 'block';
+      const pctComplete = Math.min(100, Math.round((simulatedSavings / targetGoal) * 100));
+      if (simulatedSavings >= targetGoal) {
+        progressText.innerHTML = `🎉 <strong>Goal Achieved!</strong> Your simulated changes save <strong>${simulatedSavings.toFixed(1)} kg CO₂/yr</strong>, exceeding your target of <strong>${targetGoal} kg</strong>!`;
+      } else {
+        progressText.innerHTML = `🎯 Goal Progress: <strong>${pctComplete}%</strong>. Simulated changes save <strong>${simulatedSavings.toFixed(1)} kg</strong> of your <strong>${targetGoal} kg</strong> yearly reduction target.`;
+      }
+    }
+  },
+
+  /**
+   * Appends a message bubble to the AI Coach chat history container
+   */
+  renderCoachMessage(sender, text) {
+    const container = this.$('#chat-history-container');
+    if (!container) return;
+
+    // Remove any typing bubble first
+    const typingBubble = container.querySelector('.typing');
+    if (typingBubble) typingBubble.remove();
+
+    const bubble = document.createElement('div');
+    bubble.className = `chat-bubble ${sender}`;
+    bubble.textContent = text;
+    container.appendChild(bubble);
+
+    // Scroll to bottom
+    container.scrollTop = container.scrollHeight;
+  },
+
+  /**
+   * Show/hide typing indicator animation for AI Coach
+   */
+  toggleCoachLoading(show) {
+    const container = this.$('#chat-history-container');
+    if (!container) return;
+
+    const existing = container.querySelector('.typing');
+    if (existing) existing.remove();
+
+    if (show) {
+      const bubble = document.createElement('div');
+      bubble.className = 'chat-bubble bot typing';
+      bubble.innerHTML = '<span></span><span></span><span></span>';
+      container.appendChild(bubble);
+      container.scrollTop = container.scrollHeight;
+    }
   },
 
   /**
@@ -342,3 +462,7 @@ const VerdaDOM = {
     }, 4000);
   }
 };
+
+if (typeof module !== 'undefined') {
+  module.exports = VerdaDOM;
+}

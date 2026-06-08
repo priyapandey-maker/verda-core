@@ -13,6 +13,9 @@ async function askCoach(req, res) {
     if (!question || typeof question !== 'string' || question.trim().length === 0) {
       return res.status(400).json({ error: 'Please provide a valid question for the AI coach.' });
     }
+    if (question.length > 500) {
+      return res.status(400).json({ error: 'Question is too long. Please keep it under 500 characters.' });
+    }
 
     const db = await getDb();
 

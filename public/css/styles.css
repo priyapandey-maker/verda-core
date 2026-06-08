@@ -875,3 +875,234 @@ footer {
     min-width: unset;
   }
 }
+
+/* ----------------------------------------------------
+   13. AI COACH CHAT CONSOLE
+---------------------------------------------------- */
+.coach-chat-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-console {
+  display: flex;
+  flex-direction: column;
+  background: rgba(15, 23, 42, 0.4);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  overflow: hidden;
+  height: 350px;
+}
+
+.chat-history {
+  flex: 1;
+  padding: 1.25rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  scroll-behavior: smooth;
+}
+
+.chat-bubble {
+  max-width: 85%;
+  padding: 0.75rem 1.15rem;
+  border-radius: 1rem;
+  font-size: 0.925rem;
+  line-height: 1.5;
+  animation: fadeIn 0.25s ease-out;
+  word-wrap: break-word;
+}
+
+.chat-bubble.bot {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+  border-bottom-left-radius: 4px;
+  align-self: flex-start;
+  border: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+.chat-bubble.user {
+  background: var(--gradient-accent);
+  color: var(--bg-primary);
+  font-weight: 500;
+  border-bottom-right-radius: 4px;
+  align-self: flex-end;
+}
+
+/* Typing loading indicator bubble */
+.chat-bubble.bot.typing {
+  display: flex;
+  gap: 4px;
+  padding: 0.75rem 1.25rem;
+  align-items: center;
+}
+.chat-bubble.bot.typing span {
+  width: 6px;
+  height: 6px;
+  background: var(--text-secondary);
+  border-radius: 50%;
+  animation: bounce 1.2s infinite ease-in-out;
+}
+.chat-bubble.bot.typing span:nth-child(2) { animation-delay: 0.2s; }
+.chat-bubble.bot.typing span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes bounce {
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1.0); }
+}
+
+.chat-input-area {
+  display: flex;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(15, 23, 42, 0.6);
+}
+
+#input-coach-question {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 1rem;
+  font-size: 0.95rem;
+  outline: none;
+  color: var(--text-primary);
+}
+
+.chat-send-btn {
+  background: var(--gradient-accent);
+  color: var(--bg-primary);
+  font-weight: 700;
+  padding: 0 1.5rem;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+.chat-send-btn:hover {
+  background: var(--accent-teal);
+}
+.chat-send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ----------------------------------------------------
+   14. TWIN PROGRESS CHART HOVER TOOLTIPS & TARGET GOAL
+---------------------------------------------------- */
+.twin-charts-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.twin-bar-fill {
+  position: relative;
+  cursor: help;
+}
+
+.tooltip-text {
+  visibility: hidden;
+  position: absolute;
+  bottom: 105%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.95);
+  color: var(--text-primary);
+  text-align: center;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  z-index: 10;
+  box-shadow: var(--shadow-md);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  opacity: 0;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.twin-bar-fill:hover .tooltip-text {
+  visibility: visible;
+  opacity: 1;
+  transform: translate(-50%, -4px);
+}
+
+/* Target Goal Marker Overlay */
+.target-goal-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  border-top: 2px dashed rgba(20, 184, 166, 0.85);
+  z-index: 5;
+  pointer-events: none;
+  transition: bottom 0.5s ease-in-out;
+}
+
+.target-goal-label {
+  position: absolute;
+  right: 6px;
+  bottom: 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--accent-teal);
+  background: rgba(15, 23, 42, 0.9);
+  padding: 1px 6px;
+  border-radius: 3px;
+  border: 1px solid rgba(20, 184, 166, 0.3);
+}
+
+/* Target Goal Form Inputs */
+.target-goal-input-box {
+  margin-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.target-goal-input-box label {
+  font-size: 0.825rem;
+  color: var(--text-secondary);
+}
+
+.input-inline-group {
+  display: flex;
+  gap: 12px;
+}
+.input-inline-group input {
+  flex: 1;
+  background: rgba(15, 23, 42, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  outline: none;
+  transition: var(--transition-smooth);
+}
+.input-inline-group input:focus {
+  border-color: var(--accent-teal);
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  font-weight: 600;
+  padding: 0.5rem 1.25rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: var(--transition-smooth);
+}
+.btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--accent-teal);
+}
+
+.goal-progress-text {
+  font-size: 0.825rem;
+  line-height: 1.4;
+  color: var(--text-secondary);
+  animation: fadeIn 0.3s ease-out;
+}
+.goal-progress-text strong {
+  color: var(--accent-emerald);
+}

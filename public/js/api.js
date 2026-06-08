@@ -89,3 +89,7 @@ const VerdaAPI = {
     });
   }
 };
+
+if (typeof module !== 'undefined') {
+  module.exports = VerdaAPI;
+}

@@ -280,6 +280,15 @@ describe('Verda Edge Cases and Error Handler Coverage Suite', () => {
     expect(res.status).toBe(400);
   });
 
+  test('POST /api/coach - question too long (exceeds 500 characters)', async () => {
+    const longQuestion = 'a'.repeat(501);
+    const res = await request(app)
+      .post('/api/coach')
+      .send({ user_id: 1, question: longQuestion });
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('too long');
+  });
+
   test('POST /api/coach - user not found', async () => {
     const res = await request(app).post('/api/coach').send({ user_id: 999, question: 'Question' });
     expect(res.status).toBe(404);

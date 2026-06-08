@@ -159,16 +159,35 @@
               </div>
             </div>
 
-            <!-- Comparison bar charts -->
-            <div class="twin-charts">
-              <div class="twin-bar-group">
-                <div class="twin-bar-fill current" id="twin-bar-current" style="height: 100%;" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" aria-label="Current yearly carbon trajectory"></div>
-                <span class="twin-bar-label">Current</span>
+            <!-- Comparison bar charts with target line overlay -->
+            <div class="twin-charts-wrapper">
+              <div class="twin-charts">
+                <div class="twin-bar-group">
+                  <div class="twin-bar-fill current" id="twin-bar-current" style="height: 100%;" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" aria-label="Current yearly carbon trajectory">
+                    <span class="tooltip-text" id="tooltip-current">--</span>
+                  </div>
+                  <span class="twin-bar-label">Current</span>
+                </div>
+                <div class="twin-bar-group">
+                  <div class="twin-bar-fill improved" id="twin-bar-improved" style="height: 100%;" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" aria-label="Improved yearly carbon trajectory">
+                    <span class="tooltip-text" id="tooltip-improved">--</span>
+                  </div>
+                  <span class="twin-bar-label">Improved</span>
+                </div>
+                <div class="target-goal-line" id="target-goal-line" style="bottom: 0%; display: none;">
+                  <span class="target-goal-label" id="target-goal-label">Goal Target</span>
+                </div>
               </div>
-              <div class="twin-bar-group">
-                <div class="twin-bar-fill improved" id="twin-bar-improved" style="height: 100%;" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" aria-label="Improved yearly carbon trajectory"></div>
-                <span class="twin-bar-label">Improved</span>
+            </div>
+
+            <!-- Target Goal Input -->
+            <div class="target-goal-input-box">
+              <label for="input-target-goal">Set Yearly Reduction Target (kg CO₂):</label>
+              <div class="input-inline-group">
+                <input type="number" id="input-target-goal" min="0" placeholder="e.g. 500" aria-label="Yearly carbon reduction target in kg">
+                <button type="button" class="btn-secondary" id="btn-set-goal">Apply Target</button>
               </div>
+              <p class="goal-progress-text" id="goal-progress-text" style="display: none;"></p>
             </div>
           </div>
         </section>
@@ -273,6 +292,24 @@
               Log Activity
             </button>
           </form>
+        </section>
+
+        <!-- AI SUSTAINABILITY COACH CARD -->
+        <section class="card glass coach-chat-card" aria-labelledby="coach-chat-title">
+          <h2 id="coach-chat-title" class="card-title">🌱 AI Sustainability Coach</h2>
+          <p class="section-desc">Ask Verda anything about your habits, emissions, or get tailored carbon saving suggestions.</p>
+          
+          <div class="chat-console">
+            <div class="chat-history" id="chat-history-container" aria-live="polite">
+              <div class="chat-bubble bot">
+                Hello! I am your AI Sustainability Coach. Ask me how to improve your scores or reduce your footprint!
+              </div>
+            </div>
+            <form id="coach-chat-form" class="chat-input-area">
+              <input type="text" id="input-coach-question" placeholder="e.g., How can I reduce my transportation emissions?" aria-label="Ask the AI Coach a question" required autocomplete="off">
+              <button type="submit" class="chat-send-btn" id="btn-send-coach" aria-label="Send message">Send</button>
+            </form>
+          </div>
         </section>
 
         <!-- ACTIVITY HISTORY CARD -->

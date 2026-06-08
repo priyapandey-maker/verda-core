@@ -223,6 +223,11 @@ async function getDashboard(req, res) {
       period: {
         start_date: startDateStr,
         end_date: endDateStr
+      },
+      constants: {
+        CAR_EMISSION_FACTOR,
+        BUS_EMISSION_FACTOR,
+        EMISSION_FACTORS
       }
     });
   } catch (error) {
