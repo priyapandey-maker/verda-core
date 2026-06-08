@@ -4,36 +4,222 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Verda - Carbon Footprint Tracking & Awareness Dashboard. Understand, track, and reduce your daily carbon emissions.">
-  <title>Verda - Carbon Footprint Tracker</title>
+  <title>Verda - Carbon Footprint Dashboard</title>
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+  <!-- Skip link for keyboard accessibility -->
+  <a href="#dashboard-main" class="skip-link">Skip to main content</a>
+
   <div class="container">
-    <header>
-      <h1 class="logo" id="logo-title">
-        <span aria-hidden="true">🌱</span> Verda
-      </h1>
-      <nav aria-label="Main Navigation">
-        <!-- Navigation elements will be placed here -->
-      </nav>
+    <header class="glass" role="banner">
+      <div class="logo">
+        <span aria-hidden="true">🌱</span>
+        <h1 id="logo-title">Verda</h1>
+      </div>
+      <div class="user-profile">
+        <span id="user-greeting" aria-live="polite">Loading profile...</span>
+      </div>
     </header>
 
-    <main aria-labelledby="logo-title">
-      <section class="glass" style="padding: 2rem; border-radius: var(--radius-md); text-align: center; margin-top: 4rem;">
-        <h2 style="margin-bottom: 1rem;">Welcome to Verda MVP</h2>
-        <p style="color: var(--text-secondary); margin-bottom: 1.5rem;">
-          Your carbon footprint tracking backend APIs are fully running and verified. 
-          The user dashboard will be implemented in Phase 2.
-        </p>
-        <span style="font-size: 1.25rem; font-weight: 500; color: var(--accent-emerald);">API Ready & Verified</span>
-      </section>
+    <main id="dashboard-main" class="dashboard-grid" role="main">
+      
+      <!-- LEFT COLUMN: STATS AND METRICS -->
+      <div class="dashboard-col col-left">
+        
+        <!-- SUSTAINABILITY SCORE CARD -->
+        <section class="card glass score-card" aria-labelledby="score-title">
+          <h2 id="score-title" class="card-title">Sustainability Score</h2>
+          <div class="score-display">
+            <!-- SVG Circular Gauge -->
+            <svg class="score-ring" viewBox="0 0 120 120" width="120" height="120" aria-hidden="true">
+              <circle class="score-ring-bg" cx="60" cy="60" r="52" />
+              <circle class="score-ring-fill" id="score-ring-fill" cx="60" cy="60" r="52" stroke-dasharray="326.7" stroke-dashoffset="326.7" />
+            </svg>
+            <div class="score-text-container">
+              <span class="score-number" id="score-val">--</span>
+              <span class="score-label">out of 100</span>
+            </div>
+          </div>
+          
+          <div class="stats-grid">
+            <div class="stat-item">
+              <span class="stat-label">Active Days (30d)</span>
+              <span class="stat-value" id="active-days-val">--</span>
+            </div>
+            <div class="stat-item">
+              <span class="stat-label">Consistency Bonus</span>
+              <span class="stat-value" id="bonus-val">--</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- EMISSIONS BREAKDOWN CARD -->
+        <section class="card glass breakdown-card" aria-labelledby="breakdown-title">
+          <h2 id="breakdown-title" class="card-title">Emissions Breakdown (30d)</h2>
+          <div class="total-emissions-box">
+            <span class="total-val" id="total-emissions-val">--</span>
+            <span class="total-unit">kg CO₂ total</span>
+          </div>
+
+          <div class="breakdown-bars">
+            <!-- Transportation Bar -->
+            <div class="bar-group" id="bar-group-transportation">
+              <div class="bar-header">
+                <span class="bar-label"><span class="bullet transport"></span> Transportation</span>
+                <span class="bar-value-label" id="emissions-transport-val">0.0 kg</span>
+              </div>
+              <div class="bar-track">
+                <div class="bar-fill transport" id="bar-fill-transport" style="width: 0%;" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Transportation carbon breakdown"></div>
+              </div>
+            </div>
+
+            <!-- Electricity Bar -->
+            <div class="bar-group" id="bar-group-electricity">
+              <div class="bar-header">
+                <span class="bar-label"><span class="bullet electricity"></span> Electricity</span>
+                <span class="bar-value-label" id="emissions-electricity-val">0.0 kg</span>
+              </div>
+              <div class="bar-track">
+                <div class="bar-fill electricity" id="bar-fill-electricity" style="width: 0%;" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Electricity carbon breakdown"></div>
+              </div>
+            </div>
+
+            <!-- Food Bar -->
+            <div class="bar-group" id="bar-group-food">
+              <div class="bar-header">
+                <span class="bar-label"><span class="bullet food"></span> Food</span>
+                <span class="bar-value-label" id="emissions-food-val">0.0 kg</span>
+              </div>
+              <div class="bar-track">
+                <div class="bar-fill food" id="bar-fill-food" style="width: 0%;" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="Food carbon breakdown"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+
+      <!-- RIGHT COLUMN: LOGGER FORM AND HISTORY -->
+      <div class="dashboard-col col-right">
+        
+        <!-- LOG ACTIVITY CARD -->
+        <section class="card glass logger-card" aria-labelledby="logger-title">
+          <h2 id="logger-title" class="card-title">Log Daily Activity</h2>
+          
+          <form id="activity-form" novalidate>
+            <!-- Category Tabs (Coded accessibly as radio/button groups or fieldsets) -->
+            <fieldset class="category-fieldset">
+              <legend class="sr-only">Select Activity Category</legend>
+              <div class="category-tabs" role="radiogroup" aria-label="Activity Category">
+                <input type="radio" id="cat-transport" name="category" value="transportation" checked class="sr-only">
+                <label for="cat-transport" class="tab-btn" role="radio" aria-checked="true" tabindex="0">🚗 Transport</label>
+
+                <input type="radio" id="cat-electricity" name="category" value="electricity" class="sr-only">
+                <label for="cat-electricity" class="tab-btn" role="radio" aria-checked="false" tabindex="-1">⚡ Electricity</label>
+
+                <input type="radio" id="cat-food" name="category" value="food" class="sr-only">
+                <label for="cat-food" class="tab-btn" role="radio" aria-checked="false" tabindex="-1">🥗 Food</label>
+              </div>
+            </fieldset>
+
+            <!-- Dynamic Input Panels -->
+            <div class="form-inputs-container">
+              
+              <!-- Date Selector (Common) -->
+              <div class="form-group">
+                <label for="input-date">Activity Date</label>
+                <input type="date" id="input-date" required>
+              </div>
+
+              <!-- Transportation Panel -->
+              <div id="panel-transportation" class="form-panel active">
+                <div class="form-group">
+                  <label for="select-transport">Transport Type</label>
+                  <select id="select-transport">
+                    <option value="gasoline_car">Gasoline Car</option>
+                    <option value="diesel_car">Diesel Car</option>
+                    <option value="electric_car">Electric Car</option>
+                    <option value="bus">Public Bus</option>
+                    <option value="train">Train</option>
+                    <option value="flight">Flight</option>
+                    <option value="walking_biking">Walking / Biking</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="input-distance">Distance (km)</label>
+                  <input type="number" id="input-distance" min="0.1" step="any" placeholder="e.g. 15.5">
+                </div>
+              </div>
+
+              <!-- Electricity Panel -->
+              <div id="panel-electricity" class="form-panel">
+                <div class="form-group">
+                  <label for="input-kwh">Power Consumption (kWh)</label>
+                  <input type="number" id="input-kwh" min="0.1" step="any" placeholder="e.g. 12.4">
+                </div>
+              </div>
+
+              <!-- Food Panel -->
+              <div id="panel-food" class="form-panel">
+                <div class="form-group">
+                  <label for="select-food">Meal Type</label>
+                  <select id="select-food">
+                    <option value="beef_meal">Beef Meal</option>
+                    <option value="pork_meal">Pork Meal</option>
+                    <option value="poultry_meal">Poultry Meal</option>
+                    <option value="vegetarian_meal">Vegetarian Meal</option>
+                    <option value="vegan_meal">Vegan Meal</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="input-meals">Number of Servings</label>
+                  <input type="number" id="input-meals" min="1" step="1" placeholder="e.g. 1">
+                </div>
+              </div>
+
+            </div>
+
+            <button type="submit" class="submit-btn" id="btn-submit-log">
+              Log Activity
+            </button>
+          </form>
+        </section>
+
+        <!-- ACTIVITY HISTORY CARD -->
+        <section class="card glass history-card" aria-labelledby="history-title">
+          <h2 id="history-title" class="card-title">Recent Activity History</h2>
+          
+          <div class="history-table-container">
+            <table class="history-table">
+              <thead>
+                <tr>
+                  <th scope="col">Date</th>
+                  <th scope="col">Category</th>
+                  <th scope="col">Activity Details</th>
+                  <th scope="col">Impact (CO₂)</th>
+                </tr>
+              </thead>
+              <tbody id="history-list-body">
+                <tr>
+                  <td colspan="4" class="table-empty">Loading history logs...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
     </main>
 
-    <footer style="margin-top: 5rem; text-align: center; color: var(--text-muted); font-size: 0.875rem;">
-      <p>&copy; 2026 Verda Carbon Platform. All rights reserved.</p>
+    <!-- ACCESSIBLE SYSTEM NOTIFICATION LOG -->
+    <div id="toast-container" aria-live="assertive" aria-atomic="true"></div>
+
+    <footer role="contentinfo">
+      <p>&copy; 2026 Verda Carbon Platform. Cultivating carbon mindfulness.</p>
     </footer>
   </div>
 
+  <!-- Client-Side Scripts -->
   <script src="js/api.js"></script>
   <script src="js/dom.js"></script>
   <script src="js/app.js"></script>
