@@ -113,7 +113,7 @@ describe('Verda REST API Endpoints Integration Suite', () => {
     expect(res.body.improved_trajectory_yearly).toBeDefined();
   });
 
-  test('POST /api/coach - fetches sustainability advice', async () => {
+  test('POST /api/coach - fetches sustainability advice with structured and prioritized recommendations', async () => {
     const res = await request(app)
       .post('/api/coach')
       .send({
@@ -123,6 +123,23 @@ describe('Verda REST API Endpoints Integration Suite', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.advice).toBeDefined();
-    expect(res.body.mode).toBeDefined();
+    expect(res.body.recommendations).toBeDefined();
+    expect(res.body.recommendations.length).toBeGreaterThan(0);
+
+    const rec = res.body.recommendations[0];
+    expect(typeof rec.recommendation).toBe('string');
+    expect(typeof rec.reason).toBe('string');
+    expect(typeof rec.estimatedReduction).toBe('number');
+    expect(typeof rec.confidence).toBe('number');
+    expect(typeof rec.easeScore).toBe('number');
+    expect(typeof rec.priority).toBe('number');
+
+    // Confirm priority calculation: Priority = Reduction * Ease
+    expect(rec.priority).toBe(Number((rec.estimatedReduction * rec.easeScore).toFixed(1)));
+
+    // Confirm descending priority order sorting
+    if (res.body.recommendations.length > 1) {
+      expect(res.body.recommendations[0].priority).toBeGreaterThanOrEqual(res.body.recommendations[1].priority);
+    }
   });
 });

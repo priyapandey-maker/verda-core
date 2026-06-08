@@ -3,6 +3,7 @@ const { getDb } = require('../db');
 /**
  * AI Coach endpoint. Fetches the last 30 days of activity logs, builds a JSON context,
  * constructs a prompt, and calls the Google Gemini API (falling back to a rules-based engine).
+ * Returns structured, explainable, and prioritized recommendations.
  */
 async function askCoach(req, res) {
   try {
@@ -53,11 +54,15 @@ async function askCoach(req, res) {
         acc[log.category] = (acc[log.category] || 0) + log.co2_emissions;
         return acc;
       }, { transportation: 0, electricity: 0, food: 0 }),
-      recent_logs: logs.slice(0, 10) // Include up to 10 recent logs for detail
+      recent_logs: logs.slice(0, 10)
     };
 
-    // 4. Construct Prompt
-    const systemPrompt = `You are Verda, an advanced, encouraging, and friendly AI Sustainability Coach.
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    // 4. Call Gemini API or fallback
+    if (apiKey && apiKey.trim() !== '') {
+      try {
+        const systemPrompt = `You are Verda, an advanced, encouraging, and friendly AI Sustainability Coach.
 Your goal is to help users track, understand, and reduce their carbon footprint.
 Be encouraging, concise, actionable, and focus directly on the data provided.
 
@@ -66,13 +71,21 @@ ${JSON.stringify(stats, null, 2)}
 
 User Question: "${question}"
 
-Please provide a structured response, utilizing bullet points for actions. Refrain from generalities; use their specific data metrics where possible.`;
+You MUST return a raw JSON object and nothing else. Do NOT wrap it in markdown code blocks or code fences.
+The JSON structure must match this schema exactly:
+{
+  "advice": "General coaching advice text answering the user's question.",
+  "recommendations": [
+    {
+      "recommendation": "Title of recommendation (e.g. Use public transport twice a week)",
+      "reason": "Specific reason based on user stats details",
+      "estimatedReduction": number, // estimated monthly reduction in kg CO2 as a number
+      "confidence": number, // confidence percentage as a number between 0 and 100
+      "easeScore": number // ease of implementation score from 1 (hardest) to 5 (easiest)
+    }
+  ]
+}`;
 
-    const apiKey = process.env.GEMINI_API_KEY;
-
-    // 5. Call Gemini API or fallback
-    if (apiKey && apiKey.trim() !== '') {
-      try {
         const response = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
           {
@@ -81,67 +94,150 @@ Please provide a structured response, utilizing bullet points for actions. Refra
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-              contents: [
-                {
-                  parts: [{ text: systemPrompt }]
-                }
-              ]
+              contents: [{ parts: [{ text: systemPrompt }] }]
             })
           }
         );
 
-        if (!response.ok) {
-          throw new Error(`Gemini API returned status ${response.status}`);
-        }
+        if (response.ok) {
+          const data = await response.json();
+          let rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          
+          // Clean up markdown wrapper if returned by mistake
+          rawText = rawText.replace(/```json/g, '').replace(/```/g, '').trim();
 
-        const data = await response.json();
-        const advice = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        
-        if (advice) {
-          return res.json({
-            advice,
-            context_summary: {
-              total_emissions_30d: stats.total_emissions_30d,
-              active_days: stats.days_logged
-            },
-            mode: 'AI'
-          });
+          const parsed = JSON.parse(rawText);
+          
+          if (parsed.advice && Array.isArray(parsed.recommendations)) {
+            // Compute priorities, sort, and return top 3
+            const processedRecs = parsed.recommendations.map(r => {
+              const est = Number(r.estimatedReduction) || 0;
+              const ease = Number(r.easeScore) || 3;
+              return {
+                recommendation: r.recommendation,
+                reason: r.reason,
+                estimatedReduction: est,
+                confidence: Number(r.confidence) || 80,
+                easeScore: ease,
+                priority: Number((est * ease).toFixed(1))
+              };
+            });
+
+            processedRecs.sort((a, b) => b.priority - a.priority);
+
+            return res.json({
+              advice: parsed.advice,
+              recommendations: processedRecs.slice(0, 3),
+              context_summary: {
+                total_emissions_30d: Number(stats.total_emissions_30d.toFixed(1)),
+                active_days: stats.days_logged
+              },
+              mode: 'AI'
+            });
+          }
         }
       } catch (geminiError) {
-        console.warn('Gemini API call failed, falling back to Rules Engine:', geminiError.message);
+        console.warn('Gemini API call failed or parse failed, falling back to Rules Engine:', geminiError.message);
       }
     }
 
     // Rules-Based Fallback Engine
-    const adviceParts = [];
-    adviceParts.push(`Hello ${user.name}! I am your Verda Coach. Here is your personalized carbon footprint analysis based on the past 30 days:`);
-    adviceParts.push(`\n**Your Current Profile:**`);
-    adviceParts.push(`- Total recorded emissions: **${stats.total_emissions_30d.toFixed(1)} kg CO₂** over the last 30 days.`);
-    adviceParts.push(`- You actively tracked activities on **${stats.days_logged} out of 30 days**.`);
+    const candidates = [];
 
-    const highestCat = Object.entries(stats.category_totals).sort((a, b) => b[1] - a[1])[0];
-    if (highestCat && highestCat[1] > 0) {
-      adviceParts.push(`- Your highest carbon category is **${highestCat[0]}** contributing **${highestCat[1].toFixed(1)} kg CO₂**.`);
+    // Category: Transportation
+    if (stats.category_totals.transportation > 0) {
+      const gasCarCount = logs.filter(l => l.activity === 'gasoline_car').length;
+      if (gasCarCount > 2) {
+        candidates.push({
+          recommendation: 'Use public transport twice a week',
+          reason: `You logged travel via gasoline car ${gasCarCount} times. Swapping a couple of commutes to bus/train decreases fuel usage.`,
+          estimatedReduction: 18.0,
+          confidence: 87,
+          easeScore: 4
+        });
+      } else {
+        candidates.push({
+          recommendation: 'Consolidate travel routes',
+          reason: `Transportation contributes to your carbon footprint. Grouping errands reduces cold engine phase emissions.`,
+          estimatedReduction: 10.0,
+          confidence: 90,
+          easeScore: 5
+        });
+      }
     }
 
-    adviceParts.push(`\n**Actionable Suggestions to Answer: "${question}":**`);
-    if (highestCat[0] === 'transportation') {
-      adviceParts.push(`- **Reduce Commute Footprint**: Since transportation is your main source of emissions, try replacing driving trips with cycling, walking, or bus/train transit where possible.`);
-      adviceParts.push(`- **Plan Combined Routes**: Save fuel and distance by grouping tasks into a single journey.`);
-    } else if (highestCat[0] === 'food') {
-      adviceParts.push(`- **Opt for Plant-Based Substitutes**: Food is your largest source. Try swapping beef meals with chicken or plant-based meals to immediately cut CO₂ emissions.`);
-      adviceParts.push(`- **Minimize Food Waste**: Buy food locally and avoid wastage to lower lifecycle carbon impacts.`);
-    } else if (highestCat[0] === 'electricity') {
-      adviceParts.push(`- **Eco-Efficiency at Home**: Try raising/lowering your thermostat slightly, turning off devices completely rather than leaving them on standby, and using energy-saving appliances.`);
-    } else {
-      adviceParts.push(`- **Log More Habits**: Keep tracking daily activities so I can give you more specific feedback!`);
-      adviceParts.push(`- **Unplug vampire electronics** to trim down base electricity consumption.`);
+    // Category: Food
+    if (stats.category_totals.food > 0) {
+      const beefCount = logs.filter(l => l.activity === 'beef_meal').length;
+      if (beefCount > 2) {
+        candidates.push({
+          recommendation: 'Replace beef meals with poultry or vegetarian alternatives',
+          reason: `You consumed beef ${beefCount} times. Beef is resource-intensive; swapping it cuts your food footprint by half.`,
+          estimatedReduction: 24.0,
+          confidence: 83,
+          easeScore: 4
+        });
+      } else {
+        candidates.push({
+          recommendation: 'Try a Plant-based Monday',
+          reason: `Food is a carbon factor. Eating vegetarian once a week decreases global land use emissions.`,
+          estimatedReduction: 12.0,
+          confidence: 88,
+          easeScore: 5
+        });
+      }
     }
+
+    // Category: Electricity
+    if (stats.category_totals.electricity > 0) {
+      candidates.push({
+        recommendation: 'Adjust thermostat by 1 degree',
+        reason: `Electricity usage is recorded. Small temperature trims save significant HVAC electricity over a month.`,
+        estimatedReduction: 15.0,
+        confidence: 85,
+        easeScore: 4
+      });
+    }
+
+    // Default general recommendations to ensure we always have >= 3 candidates
+    candidates.push({
+      recommendation: 'Unplug idle standby electronics',
+      reason: 'Household appliances consume vampire loads when left plugged in but idle.',
+      estimatedReduction: 5.0,
+      confidence: 95,
+      easeScore: 5
+    });
+
+    candidates.push({
+      recommendation: 'Walk or bike for short trips under 3km',
+      reason: 'Short driving journeys are highly carbon intensive because car catalytic converters take time to warm up.',
+      estimatedReduction: 8.0,
+      confidence: 92,
+      easeScore: 4
+    });
+
+    // Compute priority = estimatedReduction * easeScore
+    const prioritizedRecs = candidates.map(c => {
+      return {
+        ...c,
+        priority: Number((c.estimatedReduction * c.easeScore).toFixed(1))
+      };
+    });
+
+    // Sort descending by priority
+    prioritizedRecs.sort((a, b) => b.priority - a.priority);
+
+    // Pick top 3
+    const top3 = prioritizedRecs.slice(0, 3);
+
+    // Generate fallback text intro
+    const adviceText = `Hello ${user.name}! Based on your data over the last 30 days, I have analyzed your carbon logs and prioritized the top 3 most effective actions for you below.`;
 
     return res.json({
-      advice: adviceParts.join('\n'),
+      advice: adviceText,
+      recommendations: top3,
       context_summary: {
-        total_emissions_30d: stats.total_emissions_30d,
+        total_emissions_30d: Number(stats.total_emissions_30d.toFixed(1)),
         active_days: stats.days_logged
       },
       mode: 'Expert Rules System (API Key not configured)'
