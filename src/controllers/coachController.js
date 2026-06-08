@@ -146,6 +146,16 @@ The JSON structure must match this schema exactly:
 
     // Rules-Based Fallback Engine
     const candidates = [];
+    const qLower = question.toLowerCase();
+    let detectedCategory = null;
+
+    if (/transport|car|bus|train|drive|driving|travel|fly|flight|commute/i.test(qLower)) {
+      detectedCategory = 'transportation';
+    } else if (/food|meat|beef|pork|poultry|vegetarian|vegan|meal|eat|diet/i.test(qLower)) {
+      detectedCategory = 'food';
+    } else if (/electricity|power|energy|home|thermostat|grid|utility|vampire|electronics/i.test(qLower)) {
+      detectedCategory = 'electricity';
+    }
 
     // Category: Transportation
     if (stats.category_totals.transportation > 0) {
@@ -156,7 +166,8 @@ The JSON structure must match this schema exactly:
           reason: `You logged travel via gasoline car ${gasCarCount} times. Swapping a couple of commutes to bus/train decreases fuel usage.`,
           estimatedReduction: 18.0,
           confidence: 87,
-          easeScore: 4
+          easeScore: 4,
+          category: 'transportation'
         });
       } else {
         candidates.push({
@@ -164,7 +175,8 @@ The JSON structure must match this schema exactly:
           reason: `Transportation contributes to your carbon footprint. Grouping errands reduces cold engine phase emissions.`,
           estimatedReduction: 10.0,
           confidence: 90,
-          easeScore: 5
+          easeScore: 5,
+          category: 'transportation'
         });
       }
     }
@@ -178,7 +190,8 @@ The JSON structure must match this schema exactly:
           reason: `You consumed beef ${beefCount} times. Beef is resource-intensive; swapping it cuts your food footprint by half.`,
           estimatedReduction: 24.0,
           confidence: 83,
-          easeScore: 4
+          easeScore: 4,
+          category: 'food'
         });
       } else {
         candidates.push({
@@ -186,7 +199,8 @@ The JSON structure must match this schema exactly:
           reason: `Food is a carbon factor. Eating vegetarian once a week decreases global land use emissions.`,
           estimatedReduction: 12.0,
           confidence: 88,
-          easeScore: 5
+          easeScore: 5,
+          category: 'food'
         });
       }
     }
@@ -198,7 +212,8 @@ The JSON structure must match this schema exactly:
         reason: `Electricity usage is recorded. Small temperature trims save significant HVAC electricity over a month.`,
         estimatedReduction: 15.0,
         confidence: 85,
-        easeScore: 4
+        easeScore: 4,
+        category: 'electricity'
       });
     }
 
@@ -208,7 +223,8 @@ The JSON structure must match this schema exactly:
       reason: 'Household appliances consume vampire loads when left plugged in but idle.',
       estimatedReduction: 5.0,
       confidence: 95,
-      easeScore: 5
+      easeScore: 5,
+      category: 'electricity'
     });
 
     candidates.push({
@@ -216,25 +232,57 @@ The JSON structure must match this schema exactly:
       reason: 'Short driving journeys are highly carbon intensive because car catalytic converters take time to warm up.',
       estimatedReduction: 8.0,
       confidence: 92,
-      easeScore: 4
+      easeScore: 4,
+      category: 'transportation'
     });
 
-    // Compute priority = estimatedReduction * easeScore
+    // Compute priority = estimatedReduction * easeScore, adding a boost if matching requested category
     const prioritizedRecs = candidates.map(c => {
+      let basePriority = c.estimatedReduction * c.easeScore;
+      if (detectedCategory && c.category === detectedCategory) {
+        basePriority += 1000.0;
+      }
       return {
-        ...c,
-        priority: Number((c.estimatedReduction * c.easeScore).toFixed(1))
+        recommendation: c.recommendation,
+        reason: c.reason,
+        estimatedReduction: c.estimatedReduction,
+        confidence: c.confidence,
+        easeScore: c.easeScore,
+        priority: Number(basePriority.toFixed(1))
       };
     });
 
     // Sort descending by priority
     prioritizedRecs.sort((a, b) => b.priority - a.priority);
 
-    // Pick top 3
-    const top3 = prioritizedRecs.slice(0, 3);
+    // Remove category-boosting value offset
+    const cleanRecs = prioritizedRecs.map(r => {
+      let cleanPriority = r.priority;
+      if (cleanPriority >= 1000.0) {
+        cleanPriority -= 1000.0;
+      }
+      return {
+        recommendation: r.recommendation,
+        reason: r.reason,
+        estimatedReduction: r.estimatedReduction,
+        confidence: r.confidence,
+        easeScore: r.easeScore,
+        priority: cleanPriority
+      };
+    });
 
-    // Generate fallback text intro
-    const adviceText = `Hello ${user.name}! Based on your data over the last 30 days, I have analyzed your carbon logs and prioritized the top 3 most effective actions for you below.`;
+    // Pick top 3
+    const top3 = cleanRecs.slice(0, 3);
+
+    // Generate fallback text intro based on parsed category
+    let adviceText = `Hello ${user.name}! Based on your data over the last 30 days, I have analyzed your carbon logs and prioritized the top 3 most effective actions for you below.`;
+    if (detectedCategory === 'transportation') {
+      adviceText = `Hello ${user.name}! I detected you are asking about transportation. Based on your travel habits, here are specific recommendations to lower your transport emissions:`;
+    } else if (detectedCategory === 'food') {
+      adviceText = `Hello ${user.name}! I noticed you are asking about food or meals. Here are the top ways to optimize your diet's carbon footprint based on your logged meals:`;
+    } else if (detectedCategory === 'electricity') {
+      adviceText = `Hello ${user.name}! Regarding your query about energy or electricity: here are custom tips to minimize household power consumption based on your logged electricity usage:`;
+    }
 
     return res.json({
       advice: adviceText,
