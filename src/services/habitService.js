@@ -1,6 +1,20 @@
 /**
- * @file habitService.js
- * @description Service layer managing recurring habit detection query algorithms.
+ * @typedef {Object} UserHabit
+ * @property {string} category - Habit category.
+ * @property {string} activity - Specific activity type.
+ * @property {number} frequency - Count of logs.
+ * @property {number} total_value - Sum of activity values.
+ * @property {number} total_co2 - Total carbon footprint.
+ * @property {string} description - Dynamic text description.
+ */
+
+/**
+ * @typedef {Object} HabitResult
+ * @property {number} user_id - User identifier.
+ * @property {Object} period - Tracking range.
+ * @property {string} period.start_date - ISO date.
+ * @property {string} period.end_date - ISO date.
+ * @property {UserHabit[]} habits - Detected user habits list.
  */
 
 const logRepository = require('../repositories/logRepository');
@@ -11,7 +25,7 @@ const { AppError } = require('../utils/errors');
 /**
  * Detects recurring user habits over the last 30 days.
  * @param {number} user_id - User identifier.
- * @returns {Promise<object>} Object of formatted user habits.
+ * @returns {Promise<HabitResult>} Object of formatted user habits.
  */
 async function getHabits(user_id) {
   try {

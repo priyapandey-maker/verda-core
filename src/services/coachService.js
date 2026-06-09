@@ -3,6 +3,47 @@
  * @description Service layer managing AI Coach conversational inquiries, prompt synthesis, and rules fallback.
  */
 
+/**
+ * @typedef {Object} ActivityLog
+ * @property {number} id
+ * @property {number} user_id
+ * @property {string} activity_date
+ * @property {string} category
+ * @property {string} activity
+ * @property {number} value
+ * @property {number} co2_emissions
+ */
+
+/**
+ * @typedef {Object} Recommendation
+ * @property {string} recommendation - Recommendation text.
+ * @property {string} reason - Justification.
+ * @property {number} estimatedReduction - Monthly reduction in kg.
+ * @property {number} confidence - Confidence score.
+ * @property {number} easeScore - Ease rating (1-5).
+ * @property {number} priority - Calculated priority index.
+ */
+
+/**
+ * @typedef {Object} CoachStats
+ * @property {string} user_name - User's name.
+ * @property {number} daily_baseline - Daily baseline emissions.
+ * @property {number} total_emissions_30d - Total emissions in 30 days.
+ * @property {number} days_logged - Count of active days.
+ * @property {Object.<string, number>} category_totals - Category emissions breakdown.
+ * @property {ActivityLog[]} recent_logs - User's recent logs.
+ */
+
+/**
+ * @typedef {Object} CoachAdviceResponse
+ * @property {string} advice - Text response.
+ * @property {Recommendation[]} recommendations - Recommendation list.
+ * @property {Object} context_summary - Summary indicators.
+ * @property {number} context_summary.total_emissions_30d - Total 30-day emissions.
+ * @property {number} context_summary.active_days - Logged days.
+ * @property {string} mode - Execution mode (AI or fallback).
+ */
+
 const userRepository = require('../repositories/userRepository');
 const logRepository = require('../repositories/logRepository');
 const { DAYS_IN_30D_WINDOW } = require('../config/constants');
@@ -336,7 +377,7 @@ function detectQuestionCategory(question) {
  * Processes a question posed to the AI Coach.
  * @param {number} user_id - User identifier.
  * @param {string} question - Question query.
- * @returns {Promise<object>} Structured coach advice.
+ * @returns {Promise<CoachAdviceResponse>} Structured coach advice.
  */
 async function askCoach(user_id, question) {
   try {

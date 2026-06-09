@@ -1,6 +1,31 @@
 /**
- * @file recommendationService.js
- * @description Service layer managing recommendation generation algorithms based on user logging patterns.
+ * @typedef {Object} Recommendation
+ * @property {string} id - Unique recommendation identifier.
+ * @property {string} title - Recommendation title.
+ * @property {string} category - Carbon category.
+ * @property {string} why - Reasoning text.
+ * @property {number} estimated_co2_reduction - Expected reduction in kg CO2.
+ * @property {string} priority_score - Priority level ('High', 'Medium', 'Low').
+ */
+
+/**
+ * @typedef {Object} RecommendationDashboardData
+ * @property {number} dailyBaseline - Daily baseline.
+ * @property {number} currentEmissions - Total emissions.
+ * @property {number} score - Sustainability score.
+ * @property {Object} categoryBreakdown - Category breakdown.
+ * @property {number} categoryBreakdown.transportation - Transportation emissions.
+ * @property {number} categoryBreakdown.electricity - Electricity emissions.
+ * @property {number} categoryBreakdown.food - Food emissions.
+ * @property {number} activeDays - Number of active days logged.
+ * @property {string} startDateStr - YYYY-MM-DD start.
+ * @property {string} endDateStr - YYYY-MM-DD end.
+ */
+
+/**
+ * @typedef {Object} RecommendationsResponse
+ * @property {number} user_id - User identifier.
+ * @property {Recommendation[]} recommendations - Recommendation list.
  */
 
 const userRepository = require('../repositories/userRepository');
@@ -22,9 +47,12 @@ const SWAP_PROPORTION = 0.5; // 50% swap
  * Gets category-specific dominant carbon suggestions.
  * @param {string} dominantCategory - Dominant carbon category.
  * @param {number} dominantEmissions - Dominant category total emissions.
- * @param {Array<object>} habits - Detected active user habits.
- * @param {object} breakdown - Category breakdown emission weights.
- * @returns {object|null} Generated recommendation object or null.
+ * @param {Array<Object>} habits - Detected active user habits.
+ * @param {Object} breakdown - Category breakdown emission weights.
+ * @param {number} breakdown.transportation - Transportation emissions.
+ * @param {number} breakdown.electricity - Electricity emissions.
+ * @param {number} breakdown.food - Food emissions.
+ * @returns {Recommendation|null} Generated recommendation object or null.
  */
 function getDominantCategoryRecommendation(dominantCategory, dominantEmissions, habits, breakdown) {
   if (dominantEmissions <= 0) return null;
@@ -94,7 +122,7 @@ function getDominantCategoryRecommendation(dominantCategory, dominantEmissions, 
 /**
  * Gets score-based eco action recommendations.
  * @param {number} score - Sustainability score.
- * @returns {object|null} Generated recommendation or null.
+ * @returns {Recommendation|null} Generated recommendation or null.
  */
 function getScoreBasedRecommendation(score) {
   if (score < 60) {
@@ -123,7 +151,7 @@ function getScoreBasedRecommendation(score) {
 /**
  * Helper to fetch user dashboard data programmatically.
  * @param {number} userId - User ID.
- * @returns {Promise<object|null>} Dashboard subset or null.
+ * @returns {Promise<RecommendationDashboardData|null>} Dashboard subset or null.
  */
 async function getDashboardData(userId) {
   const user = await userRepository.findById(userId);
@@ -167,7 +195,7 @@ async function getDashboardData(userId) {
 /**
  * Generates recommendations based on the user's logged habits.
  * @param {number} userId - User ID.
- * @returns {Promise<Array<object>>} Generated recommendations.
+ * @returns {Promise<Recommendation[]>} Generated recommendations.
  */
 async function generateRecommendationsInternal(userId) {
   const dash = await getDashboardData(userId);
@@ -219,7 +247,7 @@ async function generateRecommendationsInternal(userId) {
 /**
  * Endpoint-level service to get recommendations.
  * @param {number} userId - User ID.
- * @returns {Promise<object>} Object with user_id and recommendations.
+ * @returns {Promise<RecommendationsResponse>} Object with user_id and recommendations.
  */
 async function getRecommendations(userId) {
   try {

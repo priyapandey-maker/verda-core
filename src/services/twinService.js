@@ -1,6 +1,13 @@
 /**
- * @file twinService.js
- * @description Service layer managing yearly carbon projections and simulation targets.
+ * @typedef {Object} TwinResult
+ * @property {number} user_id - User identifier.
+ * @property {number} days_tracked_30d - Active tracking days.
+ * @property {number} current_trajectory_yearly - Baseline yearly trajectory.
+ * @property {number} improved_trajectory_yearly - Improved yearly trajectory.
+ * @property {number} estimated_yearly_reduction - Estimated yearly reduction.
+ * @property {Object} calculation_basis - Basis details.
+ * @property {number} calculation_basis.daily_average_kg - Daily average emissions.
+ * @property {number} calculation_basis.monthly_saving_potential_kg - Monthly potential savings.
  */
 
 const { getDashboardData, generateRecommendationsInternal } = require('./recommendationService');
@@ -11,7 +18,7 @@ const { AppError, NotFoundError } = require('../utils/errors');
 /**
  * Retrieves the simulated carbon twin yearly projection statistics.
  * @param {number} userId - User identifier.
- * @returns {Promise<object>} Carbon twin projection metrics.
+ * @returns {Promise<TwinResult>} Carbon twin projection metrics.
  */
 async function getCarbonTwin(userId) {
   try {

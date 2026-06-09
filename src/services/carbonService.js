@@ -3,6 +3,48 @@
  * @description Business logic layer for logging carbon activities, calculating user statistics, and tracking streaks.
  */
 
+/**
+ * @typedef {Object} ActivityLog
+ * @property {number} id
+ * @property {number} user_id
+ * @property {string} activity_date
+ * @property {string} category
+ * @property {string} activity
+ * @property {number} value
+ * @property {number} co2_emissions
+ */
+
+/**
+ * @typedef {Object} CarbonStats
+ * @property {Object} user
+ * @property {number} user.id
+ * @property {string} user.name
+ * @property {number} user.daily_baseline
+ * @property {number} user.baseline_emissions_30d
+ * @property {number} sustainability_score
+ * @property {number} consistency_bonus
+ * @property {number} active_days
+ * @property {number} total_emissions_30d
+ * @property {number} average_daily_emissions_30d
+ * @property {Object} category_breakdown
+ * @property {number} category_breakdown.transportation
+ * @property {number} category_breakdown.electricity
+ * @property {number} category_breakdown.food
+ * @property {Object} period
+ * @property {string} period.start_date
+ * @property {string} period.end_date
+ * @property {Object} constants
+ * @property {number} constants.CAR_EMISSION_FACTOR
+ * @property {number} constants.BUS_EMISSION_FACTOR
+ * @property {Object} constants.EMISSION_FACTORS
+ */
+
+/**
+ * @typedef {Object} StreakData
+ * @property {number} currentStreak
+ * @property {number} longestStreak
+ */
+
 const userRepository = require('../repositories/userRepository');
 const logRepository = require('../repositories/logRepository');
 const {
@@ -84,8 +126,13 @@ function calculateCurrentStreak(dates) {
 
 /**
  * Log a new carbon activity into the database.
- * @param {object} activityData - Validated activity data.
- * @returns {Promise<object>} Result metadata and logged entry.
+ * @param {Object} activityData - Validated activity data.
+ * @param {number} activityData.user_id - User identifier.
+ * @param {string} activityData.activity_date - Date in YYYY-MM-DD.
+ * @param {string} activityData.category - Category.
+ * @param {string} activityData.activity - Specific activity type.
+ * @param {number} activityData.value - Activity quantity value.
+ * @returns {Promise<{message: string, log: ActivityLog}>} Result metadata and logged entry.
  */
 async function logActivity({ user_id, activity_date, category, activity, value }) {
   try {
@@ -124,8 +171,11 @@ async function logActivity({ user_id, activity_date, category, activity, value }
 
 /**
  * Retrieve activity logs for a user within an optional date range.
- * @param {object} filterParams - Filter variables (user_id, start_date, end_date).
- * @returns {Promise<object>} Object containing logs array.
+ * @param {Object} filterParams - Filter variables.
+ * @param {number} filterParams.user_id - User identifier.
+ * @param {string} [filterParams.start_date] - Optional start date (YYYY-MM-DD).
+ * @param {string} [filterParams.end_date] - Optional end date (YYYY-MM-DD).
+ * @returns {Promise<{logs: ActivityLog[]}>} Object containing logs array.
  */
 async function getLogs({ user_id, start_date, end_date }) {
   try {
@@ -140,7 +190,7 @@ async function getLogs({ user_id, start_date, end_date }) {
 /**
  * Retrieve user profile and emissions analytics dashboard data (30-day window).
  * @param {number} user_id - User identifier.
- * @returns {Promise<object>} Structured dashboard object.
+ * @returns {Promise<CarbonStats>} Structured dashboard object.
  */
 async function getDashboard(user_id) {
   try {
@@ -216,7 +266,7 @@ async function getDashboard(user_id) {
 /**
  * Calculates user's logging streaks (current and longest consecutive active days).
  * @param {number} user_id - User identifier.
- * @returns {Promise<object>} Streak statistics.
+ * @returns {Promise<StreakData>} Streak statistics.
  */
 async function getStreak(user_id) {
   try {

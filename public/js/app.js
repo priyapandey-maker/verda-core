@@ -1,11 +1,82 @@
 /**
- * Verda Application Orchestrator
+ * @file app.js
+ * @description Verda Application Orchestrator handling page lifecycle events, simulator updates, and log activity form logic.
  */
 
-// Cache dashboard stats locally to enable sub-millisecond What-If simulator updates
+/**
+ * @typedef {Object} CarbonStats
+ * @property {Object} user
+ * @property {number} user.id
+ * @property {string} user.name
+ * @property {number} user.daily_baseline
+ * @property {number} user.baseline_emissions_30d
+ * @property {number} sustainability_score
+ * @property {number} consistency_bonus
+ * @property {number} active_days
+ * @property {number} total_emissions_30d
+ * @property {number} average_daily_emissions_30d
+ * @property {Object} category_breakdown
+ * @property {number} category_breakdown.transportation
+ * @property {number} category_breakdown.electricity
+ * @property {number} category_breakdown.food
+ * @property {Object} period
+ * @property {string} period.start_date
+ * @property {string} period.end_date
+ * @property {Object} constants
+ * @property {number} constants.CAR_EMISSION_FACTOR
+ * @property {number} constants.BUS_EMISSION_FACTOR
+ * @property {Object} constants.EMISSION_FACTORS
+ */
+
+/**
+ * @typedef {Object} ActivityLog
+ * @property {number} id
+ * @property {number} user_id
+ * @property {string} activity_date
+ * @property {string} category
+ * @property {string} activity
+ * @property {number} value
+ * @property {number} co2_emissions
+ */
+
+/**
+ * @typedef {Object} StreakData
+ * @property {number} currentStreak
+ * @property {number} longestStreak
+ */
+
+/**
+ * @typedef {Object} Recommendation
+ * @property {string} recommendation
+ * @property {string} reason
+ * @property {number} estimatedReduction
+ * @property {number} confidence
+ * @property {number} easeScore
+ * @property {number} priority
+ */
+
+/**
+ * Cached dashboard statistics
+ * @type {CarbonStats|null}
+ */
 let cachedDashboardStats = null;
+
+/**
+ * Cached activity logs
+ * @type {ActivityLog[]|null}
+ */
 let cachedLogs = null;
+
+/**
+ * Cached logging streak data
+ * @type {StreakData|null}
+ */
 let cachedStreak = null;
+
+/**
+ * Cached recommendations
+ * @type {Recommendation[]|null}
+ */
 let cachedRecommendations = null;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -96,7 +167,9 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
- * Refreshes dashboard data, recommendations, and logs list in parallel
+ * Refreshes dashboard data, recommendations, and logs list in parallel.
+ * @param {number} [userId=1] - The user ID to sync metrics for.
+ * @returns {Promise<void>}
  */
 async function refreshDashboardData(userId = 1) {
   try {
@@ -143,7 +216,9 @@ async function refreshDashboardData(userId = 1) {
 }
 
 /**
- * AI Coach chat widget submit handler
+ * AI Coach chat widget submit handler.
+ * @param {Event} event - The form submit event.
+ * @returns {Promise<void>}
  */
 async function handleCoachSubmit(event) {
   event.preventDefault();
@@ -191,7 +266,8 @@ async function handleCoachSubmit(event) {
 }
 
 /**
- * Triggers re-calculation in What-If Simulator using sliders values
+ * Triggers re-calculation in What-If Simulator using sliders values.
+ * @returns {void}
  */
 function updateSimulatorProjections() {
   if (!cachedDashboardStats) return;
@@ -212,15 +288,12 @@ function updateSimulatorProjections() {
 }
 
 /**
- * Form Submission Event Handler
+ * Helper to parse activity log inputs from DOM based on selected category.
+ * @param {string} activeCategory - Selected category name.
+ * @returns {{activity: string, value: number}} Object containing the parsed activity and value.
+ * @private
  */
-async function handleFormSubmit(event) {
-  event.preventDefault();
-
-  const submitBtn = VerdaDOM.$('#btn-submit-log');
-  const activeCategory = VerdaDOM.$('input[name="category"]:checked').value;
-  const dateValue = VerdaDOM.$('#input-date').value;
-
+function _parseActivityInputs(activeCategory) {
   let activity = '';
   let value = 0;
 
@@ -237,6 +310,23 @@ async function handleFormSubmit(event) {
     const mealsInput = VerdaDOM.$('#input-meals');
     value = parseInt(mealsInput.value, 10);
   }
+
+  return { activity, value };
+}
+
+/**
+ * Form Submission Event Handler.
+ * @param {Event} event - The form submit event.
+ * @returns {Promise<void>}
+ */
+async function handleFormSubmit(event) {
+  event.preventDefault();
+
+  const submitBtn = VerdaDOM.$('#btn-submit-log');
+  const activeCategory = VerdaDOM.$('input[name="category"]:checked').value;
+  const dateValue = VerdaDOM.$('#input-date').value;
+
+  const { activity, value } = _parseActivityInputs(activeCategory);
 
   if (!dateValue) {
     VerdaDOM.showToast('Please select a valid date.', 'warning');
@@ -280,7 +370,8 @@ async function handleFormSubmit(event) {
 }
 
 /**
- * Resets numeric inputs
+ * Resets numeric inputs.
+ * @returns {void}
  */
 function resetInputs() {
   const distance = VerdaDOM.$('#input-distance');

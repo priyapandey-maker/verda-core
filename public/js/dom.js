@@ -1,9 +1,68 @@
 /**
- * Verda DOM Utilities and dynamic rendering engine
+ * @file dom.js
+ * @description Verda DOM Utilities and dynamic rendering engine.
  */
 
-// Dynamic emission constants loaded from backend. Fallbacks defined on VerdaDOM
+/**
+ * @typedef {Object} CarbonStats
+ * @property {Object} user
+ * @property {number} user.id
+ * @property {string} user.name
+ * @property {number} user.daily_baseline
+ * @property {number} user.baseline_emissions_30d
+ * @property {number} sustainability_score
+ * @property {number} consistency_bonus
+ * @property {number} active_days
+ * @property {number} total_emissions_30d
+ * @property {number} average_daily_emissions_30d
+ * @property {Object} category_breakdown
+ * @property {number} category_breakdown.transportation
+ * @property {number} category_breakdown.electricity
+ * @property {number} category_breakdown.food
+ * @property {Object} period
+ * @property {string} period.start_date
+ * @property {string} period.end_date
+ * @property {Object} constants
+ * @property {number} constants.CAR_EMISSION_FACTOR
+ * @property {number} constants.BUS_EMISSION_FACTOR
+ * @property {Object} constants.EMISSION_FACTORS
+ */
 
+/**
+ * @typedef {Object} ActivityLog
+ * @property {number} id
+ * @property {number} user_id
+ * @property {string} activity_date
+ * @property {string} category
+ * @property {string} activity
+ * @property {number} value
+ * @property {number} co2_emissions
+ */
+
+/**
+ * @typedef {Object} StreakData
+ * @property {number} currentStreak
+ * @property {number} longestStreak
+ */
+
+/**
+ * @typedef {Object} Recommendation
+ * @property {string} recommendation
+ * @property {string} reason
+ * @property {number} estimatedReduction
+ * @property {number} confidence
+ * @property {number} easeScore
+ * @property {number} priority
+ */
+
+/**
+ * @typedef {Object} TwinProjections
+ * @property {Array<{day: number, current: number, improved: number}>} current_trajectory_yearly
+ * @property {Array<{day: number, current: number, improved: number}>} improved_trajectory_yearly
+ * @property {number} current_yearly_total
+ * @property {number} improved_yearly_total
+ * @property {number} potential_yearly_savings
+ */
 
 const VerdaDOM = {
   // Select helper
@@ -98,6 +157,100 @@ const VerdaDOM = {
     BUS_EMISSION_FACTOR: 0.08
   },
 
+  /**
+   * Helper to update the score ring visual.
+   * @param {number} score - Sustainability score.
+   * @param {Element|null} scoreValEl - Elements holding text representation.
+   * @param {SVGPathElement|null} scoreRingEl - SVG ring container.
+   * @private
+   */
+  _updateScoreRing(score, scoreValEl, scoreRingEl) {
+    if (scoreValEl && scoreRingEl) {
+      scoreValEl.textContent = score;
+
+      const circ = 326.7;
+      const offset = circ - (circ * score / 100);
+      scoreRingEl.style.strokeDashoffset = offset;
+
+      if (score >= 80) {
+        scoreRingEl.style.stroke = 'var(--color-success)';
+      } else if (score >= 50) {
+        scoreRingEl.style.stroke = 'var(--color-warning)';
+      } else {
+        scoreRingEl.style.stroke = 'var(--color-danger)';
+      }
+    }
+  },
+
+  /**
+   * Helper to update individual category progress bar.
+   * @param {number} val - Emission value in kg.
+   * @param {number} total - Total emissions.
+   * @param {Element|null} valLabelEl - Label element container.
+   * @param {Element|null} fillEl - Fill element container.
+   * @private
+   */
+  _updateBar(val, total, valLabelEl, fillEl) {
+    if (valLabelEl) valLabelEl.textContent = `${val.toFixed(1)} kg`;
+    if (fillEl) {
+      const pct = total > 0 ? Math.min(100, Math.round((val / total) * 100)) : 0;
+      fillEl.style.width = `${pct}%`;
+      fillEl.setAttribute('aria-valuenow', pct);
+    }
+  },
+
+  /**
+   * Updates all dashboard text fields, SVG circular progress meter, and bar charts.
+   * @param {CarbonStats} data - The dashboard statistics data.
+   * @returns {void}
+   */
+  /**
+   * Helper to render user greeting if nodes are present.
+   * @param {Object} user - User profile data.
+   * @param {string} user.name - User's name.
+   * @private
+   */
+  _renderUserGreeting(user) {
+    const greeting = this.$('#user-greeting');
+    if (greeting && user) {
+      greeting.textContent = `Welcome back, ${user.name}`;
+    }
+  },
+
+  /**
+   * Helper to render dashboard metrics widgets in DOM.
+   * @param {CarbonStats} data - Dashboard statistics.
+   * @private
+   */
+  _renderDashboardMetrics(data) {
+    const scoreVal = this.$('#score-val');
+    const scoreRing = this.$('#score-ring-fill');
+    this._updateScoreRing(data.sustainability_score || 0, scoreVal, scoreRing);
+
+    const activeDays = this.$('#active-days-val');
+    if (activeDays) activeDays.textContent = `${data.active_days} / 30`;
+
+    const bonus = this.$('#bonus-val');
+    if (bonus) bonus.textContent = `+${data.consistency_bonus || 0} pts`;
+
+    const totalEmissions = this.$('#total-emissions-val');
+    if (totalEmissions) {
+      totalEmissions.textContent = data.total_emissions_30d.toFixed(1);
+    }
+
+    const breakdown = data.category_breakdown || {};
+    const total = data.total_emissions_30d;
+
+    this._updateBar(breakdown.transportation || 0, total, this.$('#emissions-transport-val'), this.$('#bar-fill-transport'));
+    this._updateBar(breakdown.electricity || 0, total, this.$('#emissions-electricity-val'), this.$('#bar-fill-electricity'));
+    this._updateBar(breakdown.food || 0, total, this.$('#emissions-food-val'), this.$('#bar-fill-food'));
+  },
+
+  /**
+   * Updates all dashboard text fields, SVG circular progress meter, and bar charts.
+   * @param {CarbonStats} data - The dashboard statistics data.
+   * @returns {void}
+   */
   renderDashboard(data) {
     if (!data) return;
 
@@ -105,63 +258,8 @@ const VerdaDOM = {
       this.constants = data.constants;
     }
 
-    // Greeting
-    const greeting = this.$('#user-greeting');
-    if (greeting && data.user) {
-      greeting.textContent = `Welcome back, ${data.user.name}`;
-    }
-
-    // Sustainability Score
-    const scoreVal = this.$('#score-val');
-    const scoreRing = this.$('#score-ring-fill');
-    if (scoreVal && scoreRing) {
-      const score = data.sustainability_score || 0;
-      scoreVal.textContent = score;
-
-      const circ = 326.7;
-      const offset = circ - (circ * score / 100);
-      scoreRing.style.strokeDashoffset = offset;
-
-      if (score >= 80) {
-        scoreRing.style.stroke = 'var(--color-success)';
-      } else if (score >= 50) {
-        scoreRing.style.stroke = 'var(--color-warning)';
-      } else {
-        scoreRing.style.stroke = 'var(--color-danger)';
-      }
-    }
-
-    // Active tracking days & consistency bonus
-    const activeDays = this.$('#active-days-val');
-    const bonus = this.$('#bonus-val');
-    if (activeDays) activeDays.textContent = `${data.active_days} / 30`;
-    if (bonus) bonus.textContent = `+${data.consistency_bonus || 0} pts`;
-
-    // Total emissions
-    const totalEmissions = this.$('#total-emissions-val');
-    if (totalEmissions) {
-      totalEmissions.textContent = data.total_emissions_30d.toFixed(1);
-    }
-
-    // Category breakdown bar charts
-    const breakdown = data.category_breakdown || { transportation: 0, electricity: 0, food: 0 };
-    const total = data.total_emissions_30d || 0;
-
-    const updateBar = (categoryName, val) => {
-      const valLabel = this.$(`#emissions-${categoryName}-val`);
-      const fill = this.$(`#bar-fill-${categoryName}`);
-      
-      if (valLabel) valLabel.textContent = `${val.toFixed(1)} kg`;
-      if (fill) {
-        const pct = total > 0 ? Math.min(100, Math.round((val / total) * 100)) : 0;
-        fill.style.width = `${pct}%`;
-        fill.setAttribute('aria-valuenow', pct);
-      }
-    };
-
-    updateBar('transport', breakdown.transportation || 0);
-    updateBar('electricity', breakdown.electricity || 0);
-    updateBar('food', breakdown.food || 0);
+    this._renderUserGreeting(data.user);
+    this._renderDashboardMetrics(data);
   },
 
   /**
@@ -238,6 +336,57 @@ const VerdaDOM = {
   /**
    * Helper to animate numeric counters smoothly
    */
+  /**
+   * Formats and sets target element text based on ID guidelines.
+   * @param {Element} el - Target element reference.
+   * @param {string} elementId - ID of element.
+   * @param {number} value - Numeric value.
+   * @private
+   */
+  _setCounterText(el, elementId, value) {
+    if (elementId === 'impact-co2-reduction' || elementId === 'twin-savings-val') {
+      el.textContent = value.toFixed(1);
+    } else {
+      el.textContent = Math.round(value).toLocaleString();
+    }
+  },
+
+  /**
+   * Schedules counter animation updates via requestAnimationFrame.
+   * @param {Element} el - Target element reference.
+   * @param {string} elementId - ID of element.
+   * @param {number} start - Start number.
+   * @param {number} end - Target end number.
+   * @param {number} startTime - Start timestamp.
+   * @param {number} duration - Animation duration.
+   * @private
+   */
+  _runCounterAnimation(el, elementId, start, end, startTime, duration) {
+    const update = (now) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const ease = 1 - Math.pow(1 - progress, 4);
+      const current = start + (end - start) * ease;
+      
+      this._setCounterText(el, elementId, current);
+
+      if (progress < 1) {
+        requestAnimationFrame(update);
+      } else {
+        this._setCounterText(el, elementId, end);
+      }
+    };
+
+    requestAnimationFrame(update);
+  },
+
+  /**
+   * Helper to animate numeric counters smoothly.
+   * @param {string} elementId - ID of target element.
+   * @param {number|string} targetValue - End value to animate to.
+   * @param {number} [duration=400] - Duration in ms.
+   * @returns {void}
+   */
   animateCounter(elementId, targetValue, duration = 400) {
     const el = this.$(`#${elementId}`);
     if (!el) return;
@@ -247,11 +396,7 @@ const VerdaDOM = {
 
     // Execute synchronously in JSDOM / Test environments to make test assertions pass instantly
     if (typeof window !== 'undefined' && (window.navigator.userAgent.includes('jsdom') || !window.requestAnimationFrame)) {
-      if (elementId === 'impact-co2-reduction' || elementId === 'twin-savings-val') {
-        el.textContent = end.toFixed(1);
-      } else {
-        el.textContent = end.toLocaleString();
-      }
+      this._setCounterText(el, elementId, end);
       return;
     }
 
@@ -261,32 +406,7 @@ const VerdaDOM = {
     }
 
     const startTime = performance.now();
-
-    const update = (now) => {
-      const elapsed = now - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      // Easing: easeOutQuart
-      const ease = 1 - Math.pow(1 - progress, 4);
-      const current = start + (end - start) * ease;
-      
-      if (elementId === 'impact-co2-reduction' || elementId === 'twin-savings-val') {
-        el.textContent = current.toFixed(1);
-      } else {
-        el.textContent = Math.round(current).toLocaleString();
-      }
-
-      if (progress < 1) {
-        requestAnimationFrame(update);
-      } else {
-        if (elementId === 'impact-co2-reduction' || elementId === 'twin-savings-val') {
-          el.textContent = end.toFixed(1);
-        } else {
-          el.textContent = end.toLocaleString();
-        }
-      }
-    };
-
-    requestAnimationFrame(update);
+    this._runCounterAnimation(el, elementId, start, end, startTime, duration);
   },
 
   chartInstance: null,
@@ -302,39 +422,60 @@ const VerdaDOM = {
   /**
    * Recalculates and renders the Carbon Twin Projections, Slider Labels, and Impact Summary
    */
-  renderTwinAndSimulator(stats, sliderValues) {
+  /**
+   * Helper to compute simulation carbon savings.
+   * @param {CarbonStats} stats - User profile stats.
+   * @param {Object} sliderValues - Swapped slider variables.
+   * @param {number} sliderValues.transit - Percentage swapped commutes.
+   * @param {number} sliderValues.veg - Veg days count per week.
+   * @param {number} sliderValues.electricity - Percentage energy reduction.
+   * @returns {{transportYearlySavings: number, foodYearlySavings: number, electricityYearlySavings: number, totalYearlySavings: number}} Yearly savings object.
+   * @private
+   */
+  _calculateYearlySavings(stats, sliderValues) {
     const transportEmissions = stats.category_breakdown.transportation || 0;
     const electricityEmissions = stats.category_breakdown.electricity || 0;
 
     const carEF = this.constants.CAR_EMISSION_FACTOR || 0.18;
     const busEF = this.constants.BUS_EMISSION_FACTOR || 0.08;
 
-    // 1. Calculate savings using constants
-    // Public Transport Swap savings
     const transportYearlySavings = transportEmissions * (sliderValues.transit / 100) * ((carEF - busEF) / carEF) * 12;
-
-    // Veg Days savings (1 meal per veg day per week swapped, saves 5.5 kg CO2)
     const foodYearlySavings = sliderValues.veg * 5.5 * 52;
-
-    // Electricity savings
     const electricityYearlySavings = electricityEmissions * (sliderValues.electricity / 100) * 12;
 
     const totalYearlySavings = transportYearlySavings + foodYearlySavings + electricityYearlySavings;
 
-    // 2. Trajectories calculations
-    const currentTrajectoryYearly = stats.active_days > 0 ? (stats.total_emissions_30d / 30 * 365) : stats.user.daily_baseline * 365;
-    const improvedTrajectoryYearly = Math.max(0, currentTrajectoryYearly - totalYearlySavings);
+    return {
+      transportYearlySavings,
+      foodYearlySavings,
+      electricityYearlySavings,
+      totalYearlySavings
+    };
+  },
 
-    // 3. Update Text Values
-    this.$('#sim-transit-val').textContent = `${sliderValues.transit}%`;
-    this.$('#sim-veg-val').textContent = `${sliderValues.veg} day${sliderValues.veg !== 1 ? 's' : ''}`;
-    this.$('#sim-electricity-val').textContent = `${sliderValues.electricity}%`;
+  /**
+   * Updates simulator text nodes and progress bar heights in the DOM.
+   * @param {Object} sliderValues - Swapped slider variables.
+   * @param {number} totalYearlySavings - Total carbon savings.
+   * @param {number} currentTrajectoryYearly - Baseline trajectory.
+   * @param {number} improvedTrajectoryYearly - Improved trajectory.
+   * @private
+   */
+  _updateTwinSimulatorDOM(sliderValues, totalYearlySavings, currentTrajectoryYearly, improvedTrajectoryYearly) {
+    const transitVal = this.$('#sim-transit-val');
+    const vegVal = this.$('#sim-veg-val');
+    const elecVal = this.$('#sim-electricity-val');
 
-    this.$('#twin-current-val').textContent = Math.round(currentTrajectoryYearly).toLocaleString();
+    if (transitVal) transitVal.textContent = `${sliderValues.transit}%`;
+    if (vegVal) vegVal.textContent = `${sliderValues.veg} day${sliderValues.veg !== 1 ? 's' : ''}`;
+    if (elecVal) elecVal.textContent = `${sliderValues.electricity}%`;
+
+    const currentValEl = this.$('#twin-current-val');
+    const improvedValEl = this.$('#twin-improved-val');
+    if (currentValEl) currentValEl.textContent = Math.round(currentTrajectoryYearly).toLocaleString();
     this.animateCounter('twin-savings-val', totalYearlySavings);
-    this.$('#twin-improved-val').textContent = Math.round(improvedTrajectoryYearly).toLocaleString();
+    if (improvedValEl) improvedValEl.textContent = Math.round(improvedTrajectoryYearly).toLocaleString();
 
-    // 4. Update Height chart bars (For JSDOM Test suite compatibility)
     const currentBar = this.$('#twin-bar-current');
     const improvedBar = this.$('#twin-bar-improved');
     if (currentBar && improvedBar) {
@@ -345,93 +486,103 @@ const VerdaDOM = {
       improvedBar.style.height = `${improvedPct}%`;
       improvedBar.setAttribute('aria-valuenow', improvedPct);
     }
+  },
 
-    // 5. Update Interactive Chart.js Twin Chart
-    if (typeof Chart !== 'undefined') {
-      const ctx = document.getElementById('carbonTwinChart');
-      if (ctx) {
-        const targetGoalInput = this.$('#input-target-goal');
-        const targetGoal = targetGoalInput ? (parseFloat(targetGoalInput.value) || 0) : 0;
-        const targetTrajectoryYearly = targetGoal > 0 ? Math.max(0, currentTrajectoryYearly - targetGoal) : null;
+  /**
+   * Refreshes or instantiates the Chart.js double trajectory diagram.
+   * @param {HTMLCanvasElement} ctx - Chart canvas reference.
+   * @param {number} currentTrajectoryYearly - Baseline trajectory.
+   * @param {number} improvedTrajectoryYearly - Improved trajectory.
+   * @param {number} totalYearlySavings - Yearly savings.
+   * @param {number} targetGoal - Goal reduction number.
+   * @private
+   */
+  _updateTwinChart(ctx, currentTrajectoryYearly, improvedTrajectoryYearly, totalYearlySavings, targetGoal) {
+    const targetTrajectoryYearly = targetGoal > 0 ? Math.max(0, currentTrajectoryYearly - targetGoal) : null;
 
-        const labels = ['Current Trajectory', 'Improved Trajectory'];
-        const chartData = [Math.round(currentTrajectoryYearly), Math.round(improvedTrajectoryYearly)];
-        const colors = ['#38bdf8', '#10b981'];
+    const labels = ['Current Trajectory', 'Improved Trajectory'];
+    const chartData = [Math.round(currentTrajectoryYearly), Math.round(improvedTrajectoryYearly)];
+    const colors = ['#38bdf8', '#10b981'];
 
-        if (targetTrajectoryYearly !== null) {
-          labels.push('Reduction Target');
-          chartData.push(Math.round(targetTrajectoryYearly));
-          colors.push('#f59e0b');
-        }
+    if (targetTrajectoryYearly !== null) {
+      labels.push('Reduction Target');
+      chartData.push(Math.round(targetTrajectoryYearly));
+      colors.push('#f59e0b');
+    }
 
-        if (!this.chartInstance) {
-          this.chartInstance = new Chart(ctx, {
-            type: 'bar',
-            data: {
-              labels: labels,
-              datasets: [{
-                data: chartData,
-                backgroundColor: colors,
-                borderWidth: 0,
-                borderRadius: 6,
-                barPercentage: 0.6
-              }]
+    if (!this.chartInstance) {
+      this.chartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: chartData,
+            backgroundColor: colors,
+            borderWidth: 0,
+            borderRadius: 6,
+            barPercentage: 0.6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            title: {
+              display: true,
+              text: 'Verda Twin Projection',
+              color: '#f8fafc',
+              font: { family: 'Outfit', size: 15, weight: '600' },
+              padding: { bottom: 15 }
             },
-            options: {
-              responsive: true,
-              maintainAspectRatio: false,
-              plugins: {
-                legend: { display: false },
-                title: {
-                  display: true,
-                  text: 'Verda Twin Projection',
-                  color: '#f8fafc',
-                  font: { family: 'Outfit', size: 15, weight: '600' },
-                  padding: { bottom: 15 }
-                },
-                tooltip: {
-                  callbacks: {
-                    label: function(context) {
-                      const val = context.raw;
-                      if (context.dataIndex === 1) {
-                        const redPct = currentTrajectoryYearly > 0 
-                          ? ((totalYearlySavings / currentTrajectoryYearly) * 100).toFixed(1)
-                          : 0;
-                        return `${val.toLocaleString()} kg CO₂/yr (Saved ${redPct}%)`;
-                      }
-                      if (context.dataIndex === 2) {
-                        const targetRedPct = currentTrajectoryYearly > 0
-                          ? ((targetGoal / currentTrajectoryYearly) * 100).toFixed(1)
-                          : 0;
-                        return `${val.toLocaleString()} kg CO₂/yr (Target: -${targetRedPct}%)`;
-                      }
-                      return `${val.toLocaleString()} kg CO₂/yr`;
-                    }
+            tooltip: {
+              callbacks: {
+                label: (context) => {
+                  const val = context.raw;
+                  if (context.dataIndex === 1) {
+                    const redPct = currentTrajectoryYearly > 0 
+                      ? ((totalYearlySavings / currentTrajectoryYearly) * 100).toFixed(1)
+                      : 0;
+                    return `${val.toLocaleString()} kg CO₂/yr (Saved ${redPct}%)`;
                   }
-                }
-              },
-              scales: {
-                x: {
-                  ticks: { color: '#cbd5e1', font: { family: 'Outfit', size: 11 } },
-                  grid: { display: false }
-                },
-                y: {
-                  ticks: { color: '#cbd5e1', font: { family: 'Outfit', size: 11 } },
-                  grid: { color: 'rgba(255, 255, 255, 0.05)' }
+                  if (context.dataIndex === 2) {
+                    const targetRedPct = currentTrajectoryYearly > 0
+                      ? ((targetGoal / currentTrajectoryYearly) * 100).toFixed(1)
+                      : 0;
+                    return `${val.toLocaleString()} kg CO₂/yr (Target: -${targetRedPct}%)`;
+                  }
+                  return `${val.toLocaleString()} kg CO₂/yr`;
                 }
               }
             }
-          });
-        } else {
-          this.chartInstance.data.labels = labels;
-          this.chartInstance.data.datasets[0].data = chartData;
-          this.chartInstance.data.datasets[0].backgroundColor = colors;
-          this.chartInstance.update();
+          },
+          scales: {
+            x: {
+              ticks: { color: '#cbd5e1', font: { family: 'Outfit', size: 11 } },
+              grid: { display: false }
+            },
+            y: {
+              ticks: { color: '#cbd5e1', font: { family: 'Outfit', size: 11 } },
+              grid: { color: 'rgba(255, 255, 255, 0.05)' }
+            }
+          }
         }
-      }
+      });
+    } else {
+      this.chartInstance.data.labels = labels;
+      this.chartInstance.data.datasets[0].data = chartData;
+      this.chartInstance.data.datasets[0].backgroundColor = colors;
+      this.chartInstance.update();
     }
+  },
 
-    // 6. Update Impact Summary equivalence stats (WOW equivalents Feature 10)
+  /**
+   * Animates equivalence widgets.
+   * @param {number} totalYearlySavings - Total saved footprint.
+   * @param {number} carEF - Car emission factor.
+   * @private
+   */
+  _updateEquivalentsDOM(totalYearlySavings, carEF) {
     const trees = Math.round(totalYearlySavings / 22);
     const km = Math.round(totalYearlySavings / carEF);
     const homes = Math.round(totalYearlySavings / 4.5);
@@ -444,8 +595,25 @@ const VerdaDOM = {
     this.animateCounter('impact-homes', homes);
     this.animateCounter('impact-flights', flights);
     this.animateCounter('impact-phones', phones);
+  },
 
-    // 7. Update tooltips text content
+  /**
+   * Recalculates and renders the Carbon Twin Projections, Slider Labels, and Impact Summary.
+   * @param {CarbonStats} stats - User profile stats.
+   * @param {Object} sliderValues - Sliders choices.
+   * @param {number} sliderValues.transit - Percentage transit replacement.
+   * @param {number} sliderValues.veg - Number of vegetarian days.
+   * @param {number} sliderValues.electricity - Percentage electricity reduction.
+   * @returns {number} The calculated yearly savings in kg CO2.
+   */
+  /**
+   * Updates twin tooltip visual content text.
+   * @param {number} currentTrajectoryYearly - Baseline trajectory.
+   * @param {number} improvedTrajectoryYearly - Improved trajectory.
+   * @param {number} totalYearlySavings - Saved carbon.
+   * @private
+   */
+  _updateTwinTooltips(currentTrajectoryYearly, improvedTrajectoryYearly, totalYearlySavings) {
     const tooltipCurrent = this.$('#tooltip-current');
     const tooltipImproved = this.$('#tooltip-improved');
     if (tooltipCurrent) {
@@ -454,13 +622,52 @@ const VerdaDOM = {
     if (tooltipImproved) {
       tooltipImproved.textContent = `${Math.round(improvedTrajectoryYearly).toLocaleString()} kg CO₂/yr (Saved ${totalYearlySavings.toFixed(1)} kg)`;
     }
+  },
 
-    // 8. Update Goal Tracker progress text and dashed overlay marker
+  /**
+   * Helper that updates the goal tracker metrics.
+   * @param {CarbonStats} stats - User profile stats.
+   * @param {number} totalYearlySavings - Total saved carbon.
+   * @private
+   */
+  _updateGoalTrackerDOM(stats, totalYearlySavings) {
     const targetGoalInput = this.$('#input-target-goal');
     if (targetGoalInput) {
       const targetGoal = parseFloat(targetGoalInput.value) || 0;
       this.renderGoalTracker(targetGoal, stats, totalYearlySavings);
     }
+  },
+
+  /**
+   * Recalculates and renders the Carbon Twin Projections, Slider Labels, and Impact Summary.
+   * @param {CarbonStats} stats - User profile stats.
+   * @param {Object} sliderValues - Sliders choices.
+   * @param {number} sliderValues.transit - Percentage transit replacement.
+   * @param {number} sliderValues.veg - Number of vegetarian days.
+   * @param {number} sliderValues.electricity - Percentage electricity reduction.
+   * @returns {number} The calculated yearly savings in kg CO2.
+   */
+  renderTwinAndSimulator(stats, sliderValues) {
+    const carEF = this.constants.CAR_EMISSION_FACTOR || 0.18;
+    const { totalYearlySavings } = this._calculateYearlySavings(stats, sliderValues);
+
+    const currentTrajectoryYearly = stats.active_days > 0 ? (stats.total_emissions_30d / 30 * 365) : stats.user.daily_baseline * 365;
+    const improvedTrajectoryYearly = Math.max(0, currentTrajectoryYearly - totalYearlySavings);
+
+    this._updateTwinSimulatorDOM(sliderValues, totalYearlySavings, currentTrajectoryYearly, improvedTrajectoryYearly);
+
+    if (typeof Chart !== 'undefined') {
+      const ctx = document.getElementById('carbonTwinChart');
+      if (ctx) {
+        const targetGoalInput = this.$('#input-target-goal');
+        const targetGoal = targetGoalInput ? (parseFloat(targetGoalInput.value) || 0) : 0;
+        this._updateTwinChart(ctx, currentTrajectoryYearly, improvedTrajectoryYearly, totalYearlySavings, targetGoal);
+      }
+    }
+
+    this._updateEquivalentsDOM(totalYearlySavings, carEF);
+    this._updateTwinTooltips(currentTrajectoryYearly, improvedTrajectoryYearly, totalYearlySavings);
+    this._updateGoalTrackerDOM(stats, totalYearlySavings);
 
     return totalYearlySavings;
   },
@@ -528,26 +735,26 @@ const VerdaDOM = {
     }
     
     if (motivationText) {
-      let text = "Getting Started";
-      let color = "var(--text-muted)";
-      let strokeColor = "var(--text-muted)";
+      let text = 'Getting Started';
+      let color = 'var(--text-muted)';
+      let strokeColor = 'var(--text-muted)';
 
       if (pct >= 75) {
-        text = "Climate Champion";
-        color = "var(--accent-emerald)";
-        strokeColor = "var(--accent-emerald)";
+        text = 'Climate Champion';
+        color = 'var(--accent-emerald)';
+        strokeColor = 'var(--accent-emerald)';
       } else if (pct >= 50) {
-        text = "Strong Impact";
-        color = "var(--accent-teal)";
-        strokeColor = "var(--accent-teal)";
+        text = 'Strong Impact';
+        color = 'var(--accent-teal)';
+        strokeColor = 'var(--accent-teal)';
       } else if (pct >= 25) {
-        text = "Making Progress";
-        color = "var(--color-warning)";
-        strokeColor = "var(--color-warning)";
+        text = 'Making Progress';
+        color = 'var(--color-warning)';
+        strokeColor = 'var(--color-warning)';
       } else {
-        text = "Getting Started";
-        color = "var(--text-muted)";
-        strokeColor = "rgba(255, 255, 255, 0.2)";
+        text = 'Getting Started';
+        color = 'var(--text-muted)';
+        strokeColor = 'rgba(255, 255, 255, 0.2)';
       }
       
       motivationText.textContent = text;
@@ -559,43 +766,117 @@ const VerdaDOM = {
   /**
    * Achievements checking and unlocking (Feature 3)
    */
+  /**
+   * Helper that evaluates the rules to check if any achievement is newly unlocked.
+   * @param {Object} unlocked - Unlocked badges registry.
+   * @param {ActivityLog[]} logs - List of activity logs.
+   * @param {number} currentScore - Sustainability score.
+   * @param {number} simulatedSavings - Yearly savings projected.
+   * @param {boolean} simulatorUsed - Flag if simulator is utilized.
+   * @returns {string|null} The ID of the newly unlocked badge, or null.
+   * @private
+   */
+  /**
+   * Checks if user has logged their first activity.
+   * @param {Object} unlocked - Unlocked badges registry.
+   * @param {ActivityLog[]} logs - List of activity logs.
+   * @returns {boolean} True if first log badge should unlock.
+   * @private
+   */
+  _checkFirstLog(unlocked, logs) {
+    return (!unlocked.first_log && logs && logs.length > 0);
+  },
+
+  /**
+   * Checks if user has active logs on 7 distinct days.
+   * @param {Object} unlocked - Unlocked badges registry.
+   * @param {ActivityLog[]} logs - List of activity logs.
+   * @returns {boolean} True if consistent logger badge should unlock.
+   * @private
+   */
+  _checkConsistentLogger(unlocked, logs) {
+    if (unlocked.consistent_logger) return false;
+    const uniqueDays = new Set(logs.map(l => l.activity_date)).size;
+    return (uniqueDays >= 7);
+  },
+
+  /**
+   * Checks if user has used the simulator.
+   * @param {Object} unlocked - Unlocked badges registry.
+   * @param {boolean} simulatorUsed - Flag if simulator is utilized.
+   * @returns {boolean} True if eco explorer badge should unlock.
+   * @private
+   */
+  _checkEcoExplorer(unlocked, simulatorUsed) {
+    return (!unlocked.eco_explorer && simulatorUsed);
+  },
+
+  /**
+   * Checks if user simulated carbon reductions >= 100 kg.
+   * @param {Object} unlocked - Unlocked badges registry.
+   * @param {number} simulatedSavings - Yearly savings projected.
+   * @returns {boolean} True if carbon reducer badge should unlock.
+   * @private
+   */
+  _checkCarbonReducer(unlocked, simulatedSavings) {
+    return (!unlocked.carbon_reducer && simulatedSavings >= 100.0);
+  },
+
+  /**
+   * Checks if user has score > 90.
+   * @param {Object} unlocked - Unlocked badges registry.
+   * @param {number} currentScore - Sustainability score.
+   * @returns {boolean} True if climate champion badge should unlock.
+   * @private
+   */
+  _checkClimateChampion(unlocked, currentScore) {
+    return (!unlocked.climate_champion && currentScore > 90.0);
+  },
+
+  /**
+   * Helper that evaluates the rules to check if any achievement is newly unlocked.
+   * @param {Object} unlocked - Unlocked badges registry.
+   * @param {ActivityLog[]} logs - List of activity logs.
+   * @param {number} currentScore - Sustainability score.
+   * @param {number} simulatedSavings - Yearly savings projected.
+   * @param {boolean} simulatorUsed - Flag if simulator is utilized.
+   * @returns {string|null} The ID of the newly unlocked badge, or null.
+   * @private
+   */
+  _evaluateUnlockRules(unlocked, logs, currentScore, simulatedSavings, simulatorUsed) {
+    if (this._checkFirstLog(unlocked, logs)) {
+      return 'first_log';
+    }
+    if (this._checkConsistentLogger(unlocked, logs)) {
+      return 'consistent_logger';
+    }
+    if (this._checkEcoExplorer(unlocked, simulatorUsed)) {
+      return 'eco_explorer';
+    }
+    if (this._checkCarbonReducer(unlocked, simulatedSavings)) {
+      return 'carbon_reducer';
+    }
+    if (this._checkClimateChampion(unlocked, currentScore)) {
+      return 'climate_champion';
+    }
+    return null;
+  },
+
+  /**
+   * Achievements checking and unlocking.
+   * @param {CarbonStats} stats - User profile stats.
+   * @param {ActivityLog[]} logs - Activity logs.
+   * @param {number} currentScore - Score out of 100.
+   * @param {number} simulatedSavings - Simulated savings count.
+   * @param {boolean} [simulatorUsed=false] - Simulation state indicator.
+   * @returns {void}
+   */
   checkAndUnlockAchievements(stats, logs, currentScore, simulatedSavings, simulatorUsed = false) {
     let unlocked = JSON.parse(localStorage.getItem('verda_achievements') || '{}');
-    let newlyUnlocked = null;
-
-    // Check conditions:
-    // 1. First Log
-    if (!unlocked.first_log && logs && logs.length > 0) {
-      unlocked.first_log = true;
-      newlyUnlocked = 'first_log';
-    }
-
-    // 2. Consistent Logger
-    const uniqueDays = new Set(logs.map(l => l.activity_date)).size;
-    if (!unlocked.consistent_logger && uniqueDays >= 7) {
-      unlocked.consistent_logger = true;
-      newlyUnlocked = 'consistent_logger';
-    }
-
-    // 3. Eco Explorer
-    if (!unlocked.eco_explorer && simulatorUsed) {
-      unlocked.eco_explorer = true;
-      newlyUnlocked = 'eco_explorer';
-    }
-
-    // 4. Carbon Reducer
-    if (!unlocked.carbon_reducer && simulatedSavings >= 100.0) {
-      unlocked.carbon_reducer = true;
-      newlyUnlocked = 'carbon_reducer';
-    }
-
-    // 5. Climate Champion
-    if (!unlocked.climate_champion && currentScore > 90.0) {
-      unlocked.climate_champion = true;
-      newlyUnlocked = 'climate_champion';
-    }
+    const newlyUnlocked = this._evaluateUnlockRules(unlocked, logs, currentScore, simulatedSavings, simulatorUsed);
 
     if (newlyUnlocked) {
+      unlocked[newlyUnlocked] = true;
       localStorage.setItem('verda_achievements', JSON.stringify(unlocked));
       const ach = this.achievements.find(a => a.id === newlyUnlocked);
       this.showToast(`🏆 EcoBadge Unlocked: ${ach.name}!`, 'success');
@@ -642,63 +923,113 @@ const VerdaDOM = {
   /**
    * Personalized Insights Generator (Feature 6)
    */
-  renderPersonalizedInsights(stats, logs) {
-    const container = this.$('#insights-list-container');
-    if (!container) return;
-
-    container.innerHTML = '';
+  /**
+   * Compiles percentage distribution insights.
+   * @param {Object} breakdown - Category breakdown emissions.
+   * @param {number} total - Total footprint emissions.
+   * @returns {string[]} Compiled insights array.
+   * @private
+   */
+  _getDistributionInsights(breakdown, total) {
     const insights = [];
+    if (total <= 0) return insights;
 
-    const total = stats.total_emissions_30d || 0;
-    const breakdown = stats.category_breakdown || { transportation: 0, electricity: 0, food: 0 };
+    const elecPct = Math.round((breakdown.electricity / total) * 100);
+    const transPct = Math.round((breakdown.transportation / total) * 100);
+    const foodPct = Math.round((breakdown.food / total) * 100);
 
-    // 1. Percentage distribution
-    if (total > 0) {
-      const elecPct = Math.round((breakdown.electricity / total) * 100);
-      const transPct = Math.round((breakdown.transportation / total) * 100);
-      const foodPct = Math.round((breakdown.food / total) * 100);
-
-      if (elecPct >= 35) {
-        insights.push(`⚡ Electricity contributes ${elecPct}% of your footprint. Temperature trimmings would yield high reductions.`);
-      }
-      if (transPct >= 35) {
-        insights.push(`🚗 Transportation makes up ${transPct}% of your footprint. Consider swapping solo drives for transit.`);
-      }
-      if (foodPct >= 35) {
-        insights.push(`🥗 Food emissions represent ${foodPct}% of your footprint. Trimming beef intake cuts your footprint.`);
-      }
+    if (elecPct >= 35) {
+      insights.push(`⚡ Electricity contributes ${elecPct}% of your footprint. Temperature trimmings would yield high reductions.`);
     }
-
-    // 2. Logging frequency
-    if (logs && logs.length > 0) {
-      const transLogs = logs.filter(l => l.category === 'transportation').length;
-      const foodLogs = logs.filter(l => l.category === 'food').length;
-      const elecLogs = logs.filter(l => l.category === 'electricity').length;
-
-      if (transLogs >= 5) {
-        insights.push(`🛣️ You logged transportation activities ${transLogs} times this month.`);
-      }
-      if (foodLogs >= 5) {
-        insights.push(`🍽️ You logged dietary inputs ${foodLogs} times this month.`);
-      }
-      if (elecLogs >= 5) {
-        insights.push(`🔌 You logged electricity usage ${elecLogs} times this month.`);
-      }
+    if (transPct >= 35) {
+      insights.push(`🚗 Transportation makes up ${transPct}% of your footprint. Consider swapping solo drives for transit.`);
     }
+    if (foodPct >= 35) {
+      insights.push(`🥗 Food emissions represent ${foodPct}% of your footprint. Trimming beef intake cuts your footprint.`);
+    }
+    return insights;
+  },
 
-    // 3. Trends and comparison insights
+  /**
+   * Compiles logging frequency-based insights.
+   * @param {ActivityLog[]} logs - User activity logs.
+   * @returns {string[]} Compiled insights array.
+   * @private
+   */
+  _getFrequencyInsights(logs) {
+    const insights = [];
+    if (!logs || logs.length === 0) return insights;
+
+    const transLogs = logs.filter(l => l.category === 'transportation').length;
+    const foodLogs = logs.filter(l => l.category === 'food').length;
+    const elecLogs = logs.filter(l => l.category === 'electricity').length;
+
+    if (transLogs >= 5) {
+      insights.push(`🛣️ You logged transportation activities ${transLogs} times this month.`);
+    }
+    if (foodLogs >= 5) {
+      insights.push(`🍽️ You logged dietary inputs ${foodLogs} times this month.`);
+    }
+    if (elecLogs >= 5) {
+      insights.push(`🔌 You logged electricity usage ${elecLogs} times this month.`);
+    }
+    return insights;
+  },
+
+  /**
+   * Compiles dominant category-based trend insights.
+   * @param {Object} breakdown - Category breakdown emissions.
+   * @returns {string[]} Compiled insights array.
+   * @private
+   */
+  _getTrendInsights(breakdown) {
+    const insights = [];
     if (breakdown.food > breakdown.transportation && breakdown.food > breakdown.electricity) {
       insights.push(`🥩 Food emissions increased compared to other categories.`);
     } else if (breakdown.transportation > breakdown.electricity && breakdown.transportation > breakdown.food) {
       insights.push(`✈️ Travel emissions are outstripping utility and diet footprints. commuting choice is key.`);
     }
+    return insights;
+  },
 
-    // Default fallbacks if insufficient data
+  /**
+   * Compiles the list of insights with default fallbacks.
+   * @param {CarbonStats} stats - User profile stats.
+   * @param {ActivityLog[]} logs - User activity logs.
+   * @returns {string[]} Sorted array of insight strings.
+   * @private
+   */
+  _compileInsightsList(stats, logs) {
+    const breakdown = stats.category_breakdown || { transportation: 0, electricity: 0, food: 0 };
+    const total = stats.total_emissions_30d || 0;
+
+    const insights = [
+      ...this._getDistributionInsights(breakdown, total),
+      ...this._getFrequencyInsights(logs),
+      ...this._getTrendInsights(breakdown)
+    ];
+
     if (insights.length < 3) {
       insights.push(`🌱 Keep logging daily activities to receive highly tailored, data-driven eco insights.`);
       insights.push(`💡 Small changes compound: swapping one car commute saves carbon equivalent to planting a tree.`);
       insights.push(`☀️ Setting a yearly target goal helps visualize your progress and keeps you on track.`);
     }
+
+    return insights;
+  },
+
+  /**
+   * Personalized Insights Generator.
+   * @param {CarbonStats} stats - User profile stats.
+   * @param {ActivityLog[]} logs - Activity logs.
+   * @returns {void}
+   */
+  renderPersonalizedInsights(stats, logs) {
+    const container = this.$('#insights-list-container');
+    if (!container) return;
+
+    container.innerHTML = '';
+    const insights = this._compileInsightsList(stats, logs);
 
     // Display top 3-5 insights
     insights.slice(0, 5).forEach(ins => {
@@ -729,55 +1060,41 @@ const VerdaDOM = {
   /**
    * PDF Report Generator (Feature 7) - High quality, multi-page judge-ready Climate Passport
    */
-  async generateClimatePassportPDF(stats, logs, streakData, sliderValues, recommendations) {
-    if (typeof window.jspdf === 'undefined' || typeof html2canvas === 'undefined') {
-      this.showToast('PDF and Canvas libraries are currently unavailable.', 'error');
-      return;
-    }
+  /**
+   * Helper that stamps running header and page markers on multi-page PDF pages.
+   * @param {Object} docInstance - The jsPDF document instance.
+   * @param {string} title - Section title heading.
+   * @param {number} pageNumber - Target page number indicator.
+   * @returns {void}
+   * @private
+   */
+  _addFooterAndHeader(docInstance, title, pageNumber) {
+    docInstance.setFont('Helvetica', 'normal');
+    docInstance.setFontSize(8);
+    docInstance.setTextColor(148, 163, 184);
+    docInstance.text(title, 20, 15);
+    docInstance.setDrawColor(226, 232, 240);
+    docInstance.setLineWidth(0.2);
+    docInstance.line(20, 17, 190, 17);
 
-    // Capture the chart canvas using html2canvas
-    const chartCanvas = document.getElementById('carbonTwinChart');
-    let chartImgData = null;
-    if (chartCanvas) {
-      try {
-        const canvasClone = await html2canvas(chartCanvas, {
-          scale: 2,
-          backgroundColor: null,
-          logging: false
-        });
-        chartImgData = canvasClone.toDataURL('image/png');
-      } catch (err) {
-        console.error('Failed to capture twin chart canvas:', err);
-      }
-    }
+    docInstance.line(20, 280, 190, 280);
+    docInstance.text('Generated by Verda  |  "Your Personal Climate Operating System"', 20, 285);
+    docInstance.text(`Page ${pageNumber} of 5`, 175, 285);
+  },
 
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF('p', 'mm', 'a4');
-    let pageCount = 1;
-
-    const addFooterAndHeader = (docInstance, title) => {
-      // Header
-      docInstance.setFont('Helvetica', 'normal');
-      docInstance.setFontSize(8);
-      docInstance.setTextColor(148, 163, 184); // slate 400
-      docInstance.text(title, 20, 15);
-      docInstance.setDrawColor(226, 232, 240); // slate 200
-      docInstance.setLineWidth(0.2);
-      docInstance.line(20, 17, 190, 17);
-
-      // Footer
-      docInstance.line(20, 280, 190, 280);
-      docInstance.text('Generated by Verda  |  "Your Personal Climate Operating System"', 20, 285);
-      docInstance.text(`Page ${pageCount} of 5`, 175, 285);
-    };
-
-    // ----------------------------------------------------
-    // PAGE 1: COVER PAGE
-    // ----------------------------------------------------
-    doc.setFillColor(15, 23, 42); // slate 900
+  /**
+   * Draws page 1 (cover page) elements onto the PDF.
+   * @param {Object} doc - jsPDF instance.
+   * @param {{y: number, pageCount: number}} state - Running layout state tracker.
+   * @param {CarbonStats} stats - User profile stats.
+   * @returns {{y: number, pageCount: number}} Updated state.
+   * @private
+   */
+  _drawPDFCoverPage(doc, state, stats) {
+    state.y = 0;
+    doc.setFillColor(15, 23, 42);
     doc.rect(0, 0, 210, 120, 'F');
 
-    // Title & Branding
     doc.setTextColor(255, 255, 255);
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(38);
@@ -791,7 +1108,6 @@ const VerdaDOM = {
     doc.setTextColor(148, 163, 184);
     doc.text('Your Personal Sustainability & Carbon Impact Snapshot', 20, 75);
 
-    // EarthScore Snapshot Card
     doc.setFillColor(248, 250, 252);
     doc.rect(20, 140, 170, 60, 'F');
     doc.setDrawColor(226, 232, 240);
@@ -804,7 +1120,7 @@ const VerdaDOM = {
     doc.text('EarthScore Snapshot', 30, 155);
 
     doc.setFontSize(32);
-    doc.setTextColor(16, 185, 129); // Emerald green
+    doc.setTextColor(16, 185, 129);
     doc.text(`${stats.sustainability_score} / 100`, 30, 175);
 
     doc.setFont('Helvetica', 'normal');
@@ -814,19 +1130,29 @@ const VerdaDOM = {
     const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
     doc.text(`Date of Issue: ${dateStr}`, 110, 188);
 
-    // Decorative tagline footer
     doc.setTextColor(148, 163, 184);
     doc.setFontSize(9);
     doc.text('VERDA — YOUR PERSONAL CLIMATE OPERATING SYSTEM', 20, 270);
 
-    // ----------------------------------------------------
-    // PAGE 2: EMISSIONS OVERVIEW & CARBON TWIN REPORT
-    // ----------------------------------------------------
-    doc.addPage();
-    pageCount++;
-    addFooterAndHeader(doc, '1. Emissions Overview & 2. Verda Twin');
+    state.y = 270;
+    return state;
+  },
 
-    // Section 2 Header
+  /**
+   * Draws page 2 (emissions overview & twin projections chart) onto the PDF.
+   * @param {Object} doc - jsPDF instance.
+   * @param {{y: number, pageCount: number}} state - Running layout state tracker.
+   * @param {CarbonStats} stats - User profile stats.
+   * @param {string|null} chartImgData - Twin chart canvas base64 image data URL.
+   * @param {Object} sliderValues - Chosen slider parameters.
+   * @returns {{y: number, pageCount: number}} Updated state.
+   * @private
+   */
+  _drawPDFDashboardPage(doc, state, stats, chartImgData, sliderValues) {
+    doc.addPage();
+    state.pageCount++;
+    this._addFooterAndHeader(doc, '1. Emissions Overview & 2. Verda Twin', state.pageCount);
+
     doc.setTextColor(15, 23, 42);
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(13);
@@ -834,8 +1160,6 @@ const VerdaDOM = {
     doc.setDrawColor(203, 213, 225);
     doc.line(20, 33, 190, 33);
 
-    // Grid of cards
-    // Card 1: Total
     doc.setFillColor(241, 245, 249);
     doc.rect(20, 38, 78, 25, 'F');
     doc.setFont('Helvetica', 'bold');
@@ -846,7 +1170,6 @@ const VerdaDOM = {
     doc.setTextColor(15, 23, 42);
     doc.text(`${stats.total_emissions_30d.toFixed(1)} kg CO2`, 24, 53);
 
-    // Card 2: Transport
     doc.setFillColor(241, 245, 249);
     doc.rect(112, 38, 78, 25, 'F');
     doc.setFont('Helvetica', 'bold');
@@ -854,10 +1177,9 @@ const VerdaDOM = {
     doc.setTextColor(71, 85, 105);
     doc.text('Transportation Emissions', 116, 44);
     doc.setFontSize(13);
-    doc.setTextColor(56, 189, 248); // Light Blue
+    doc.setTextColor(56, 189, 248);
     doc.text(`${stats.category_breakdown.transportation.toFixed(1)} kg CO2`, 116, 53);
 
-    // Card 3: Electricity
     doc.setFillColor(241, 245, 249);
     doc.rect(20, 68, 78, 25, 'F');
     doc.setFont('Helvetica', 'bold');
@@ -865,10 +1187,9 @@ const VerdaDOM = {
     doc.setTextColor(71, 85, 105);
     doc.text('Electricity Emissions', 24, 74);
     doc.setFontSize(13);
-    doc.setTextColor(245, 158, 11); // Amber
+    doc.setTextColor(245, 158, 11);
     doc.text(`${stats.category_breakdown.electricity.toFixed(1)} kg CO2`, 24, 83);
 
-    // Card 4: Food
     doc.setFillColor(241, 245, 249);
     doc.rect(112, 68, 78, 25, 'F');
     doc.setFont('Helvetica', 'bold');
@@ -876,17 +1197,15 @@ const VerdaDOM = {
     doc.setTextColor(71, 85, 105);
     doc.text('Food Emissions', 116, 74);
     doc.setFontSize(13);
-    doc.setTextColor(239, 68, 68); // Red
+    doc.setTextColor(239, 68, 68);
     doc.text(`${stats.category_breakdown.food.toFixed(1)} kg CO2`, 116, 83);
 
-    // Extra stats line
     doc.setFont('Helvetica', 'normal');
     doc.setFontSize(9.5);
     doc.setTextColor(71, 85, 105);
     doc.text(`Active Tracking Days (30d): ${stats.active_days} days`, 20, 102);
     doc.text(`Consistency Reward Bonus: +${stats.consistency_bonus || 0} pts`, 110, 102);
 
-    // Section 3 Header
     doc.setTextColor(15, 23, 42);
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(13);
@@ -909,7 +1228,6 @@ const VerdaDOM = {
     doc.setFont('Helvetica', 'bold');
     doc.text(`Potential Annual Carbon Reduction: ${totalYearlySavings.toFixed(1)} kg CO2/yr`, 20, 139);
 
-    // Chart image embed
     if (chartImgData) {
       doc.addImage(chartImgData, 'PNG', 30, 148, 150, 75);
     } else {
@@ -922,53 +1240,30 @@ const VerdaDOM = {
       doc.text('[ Verda Twin Projection Chart Image ]', 75, 185);
     }
 
-    // ----------------------------------------------------
-    // PAGE 3: FUTURESHIFT SIMULATION & PERSONALIZED INSIGHTS
-    // ----------------------------------------------------
-    doc.addPage();
-    pageCount++;
-    addFooterAndHeader(doc, '3. FutureShift & Insights');
+    state.y = 223;
+    return state;
+  },
 
-    // Section 4 Header
-    doc.setTextColor(15, 23, 42);
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(13);
-    doc.text('3. FutureShift Habit Simulation Projections', 20, 30);
-    doc.line(20, 33, 190, 33);
-
-    doc.setFont('Helvetica', 'normal');
-    doc.setFontSize(9.5);
-    doc.text(`Transit Replacement: ${sliderValues.transit}% of driving commutes swapped with public transit`, 20, 41);
-    doc.text(`Diet Adjustment: ${sliderValues.veg} vegetarian days per week`, 20, 47);
-    doc.text(`Energy Savings: ${sliderValues.electricity}% reduction in home grid electricity usage`, 20, 53);
-
-    // Equivalents
-    doc.setFont('Helvetica', 'bold');
-    doc.text('Projected Ecological Equivalents (Annualized):', 20, 65);
-
-    const treesCount = Math.round(totalYearlySavings / 22);
-    const kmCount = Math.round(totalYearlySavings / carEF);
-    const homesCount = Math.round(totalYearlySavings / 4.5);
-    const flightsCount = Math.round(totalYearlySavings / 150);
-    const phonesCount = Math.round(totalYearlySavings / 0.008);
-
-    doc.setFont('Helvetica', 'normal');
-    doc.text(`🌳  Trees Planted: ${treesCount} mature trees absorbing carbon from atmosphere`, 25, 73);
-    doc.text(`🚗  Driving Avoided: ${kmCount.toLocaleString()} km of average gasoline driving eliminated`, 25, 81);
-    doc.text(`🏠  Household Days Powered: ${homesCount.toLocaleString()} days of full single-home electrical usage saved`, 25, 89);
-    doc.text(`✈️  Flights Avoided: ${flightsCount.toLocaleString()} short-haul flights eliminated`, 25, 97);
-    doc.text(`📱  Mobile Recharges: ${phonesCount.toLocaleString()} phone charge cycles saved`, 25, 105);
-
-    // Section 5 Header
-    doc.setTextColor(15, 23, 42);
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(13);
-    doc.text('4. Impact Lens — Personalized Carbon Insights', 20, 120);
-    doc.line(20, 123, 190, 123);
-
+  /**
+   * Draws page 3 (FutureShift Simulation & equivalents) onto the PDF.
+   * @param {Object} doc - jsPDF instance.
+   * @param {{y: number, pageCount: number}} state - Running layout state tracker.
+   * @param {CarbonStats} stats - User profile stats.
+   * @param {Object} sliderValues - Slider parameters.
+   * @returns {{y: number, pageCount: number}} Updated state.
+   * @private
+   */
+  /**
+   * Compiles localized PDF-specific carbon insights.
+   * @param {CarbonStats} stats - User profile stats.
+   * @returns {string[]} Sorted array of insight strings.
+   * @private
+   */
+  _compilePDFInsightsList(stats) {
     const totalE = stats.total_emissions_30d || 0;
     const cat = stats.category_breakdown || { transportation: 0, electricity: 0, food: 0 };
     const insightsList = [];
+
     if (totalE > 0) {
       const elecPct = Math.round((cat.electricity / totalE) * 100);
       const transPct = Math.round((cat.transportation / totalE) * 100);
@@ -991,6 +1286,66 @@ const VerdaDOM = {
       insightsList.push(`• Commuting choices and dietary adjustments are the leading pillars of carbon footprint control.`);
     }
 
+    return insightsList;
+  },
+
+  /**
+   * Draws page 3 (FutureShift Simulation & equivalents) onto the PDF.
+   * @param {Object} doc - jsPDF instance.
+   * @param {{y: number, pageCount: number}} state - Running layout state tracker.
+   * @param {CarbonStats} stats - User profile stats.
+   * @param {Object} sliderValues - Slider parameters.
+   * @returns {{y: number, pageCount: number}} Updated state.
+   * @private
+   */
+  _drawPDFTwinPage(doc, state, stats, sliderValues) {
+    doc.addPage();
+    state.pageCount++;
+    this._addFooterAndHeader(doc, '3. FutureShift & Insights', state.pageCount);
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text('3. FutureShift Habit Simulation Projections', 20, 30);
+    doc.line(20, 33, 190, 33);
+
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(9.5);
+    doc.text(`Transit Replacement: ${sliderValues.transit}% of driving commutes swapped with public transit`, 20, 41);
+    doc.text(`Diet Adjustment: ${sliderValues.veg} vegetarian days per week`, 20, 47);
+    doc.text(`Energy Savings: ${sliderValues.electricity}% reduction in home grid electricity usage`, 20, 53);
+
+    doc.setFont('Helvetica', 'bold');
+    doc.text('Projected Ecological Equivalents (Annualized):', 20, 65);
+
+    const carEF = this.constants.CAR_EMISSION_FACTOR || 0.18;
+    const busEF = this.constants.BUS_EMISSION_FACTOR || 0.08;
+    const transportYearlySavings = (stats.category_breakdown.transportation || 0) * (sliderValues.transit / 100) * ((carEF - busEF) / carEF) * 12;
+    const foodYearlySavings = sliderValues.veg * 5.5 * 52;
+    const electricityYearlySavings = (stats.category_breakdown.electricity || 0) * (sliderValues.electricity / 100) * 12;
+    const totalYearlySavings = transportYearlySavings + foodYearlySavings + electricityYearlySavings;
+
+    const treesCount = Math.round(totalYearlySavings / 22);
+    const kmCount = Math.round(totalYearlySavings / carEF);
+    const homesCount = Math.round(totalYearlySavings / 4.5);
+    const flightsCount = Math.round(totalYearlySavings / 150);
+    const phonesCount = Math.round(totalYearlySavings / 0.008);
+
+    doc.setFont('Helvetica', 'normal');
+    doc.text(`🌳  Trees Planted: ${treesCount} mature trees absorbing carbon from atmosphere`, 25, 73);
+    doc.text(`🚗  Driving Avoided: ${kmCount.toLocaleString()} km of average gasoline driving eliminated`, 25, 81);
+    doc.text(`🏠  Household Days Powered: ${homesCount.toLocaleString()} days of full single-home electrical usage saved`, 25, 89);
+    doc.text(`✈️  Flights Avoided: ${flightsCount.toLocaleString()} short-haul flights eliminated`, 25, 97);
+    doc.text(`📱  Mobile Recharges: ${phonesCount.toLocaleString()} phone charge cycles saved`, 25, 105);
+
+    doc.setTextColor(15, 23, 42);
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.text('4. Impact Lens — Personalized Carbon Insights', 20, 120);
+    doc.line(20, 123, 190, 123);
+
+    const insightsList = this._compilePDFInsightsList(stats);
+
     doc.setFont('Helvetica', 'normal');
     doc.setFontSize(9.5);
     let insY = 131;
@@ -999,14 +1354,23 @@ const VerdaDOM = {
       insY += 7;
     });
 
-    // ----------------------------------------------------
-    // PAGE 4: TOP RECOMMENDATIONS
-    // ----------------------------------------------------
-    doc.addPage();
-    pageCount++;
-    addFooterAndHeader(doc, '4. Core Recommendations');
+    state.y = insY;
+    return state;
+  },
 
-    // Section 6 Header
+  /**
+   * Draws page 4 (prioritized action recommendations) onto the PDF.
+   * @param {Object} doc - jsPDF instance.
+   * @param {{y: number, pageCount: number}} state - Running layout state tracker.
+   * @param {Recommendation[]} recommendations - Recommendation list.
+   * @returns {{y: number, pageCount: number}} Updated state.
+   * @private
+   */
+  _drawPDFHabitsPage(doc, state, recommendations) {
+    doc.addPage();
+    state.pageCount++;
+    this._addFooterAndHeader(doc, '4. Core Recommendations', state.pageCount);
+
     doc.setTextColor(15, 23, 42);
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(13);
@@ -1031,16 +1395,15 @@ const VerdaDOM = {
         doc.setTextColor(15, 23, 42);
         doc.text(`${index + 1}. ${rec.title || rec.recommendation}`, 24, recY + 6);
 
-        // Priority Badge
         const priorityStr = rec.priority_score || (rec.priority > 50 ? 'High' : 'Medium');
         doc.setFontSize(8);
         doc.setTextColor(255, 255, 255);
         if (priorityStr === 'High') {
-          doc.setFillColor(239, 68, 68); // Red
+          doc.setFillColor(239, 68, 68);
         } else if (priorityStr === 'Medium') {
-          doc.setFillColor(245, 158, 11); // Orange
+          doc.setFillColor(245, 158, 11);
         } else {
-          doc.setFillColor(16, 185, 129); // Green
+          doc.setFillColor(16, 185, 129);
         }
         doc.rect(155, recY + 2.5, 30, 5, 'F');
         doc.text(`${priorityStr} Priority`, 159, recY + 6);
@@ -1058,16 +1421,26 @@ const VerdaDOM = {
       });
     } else {
       doc.text('No active recommendations. Please log daily activities to generate personalized tips.', 20, 50);
+      recY = 60;
     }
 
-    // ----------------------------------------------------
-    // PAGE 5: ECOBADGES & VERDA GUIDE SUMMARY
-    // ----------------------------------------------------
-    doc.addPage();
-    pageCount++;
-    addFooterAndHeader(doc, '5. Badges & Verda Guide');
+    state.y = recY;
+    return state;
+  },
 
-    // Section 7 Header
+  /**
+   * Draws page 5 (gamification badges, guide summary, metadata details) onto the PDF.
+   * @param {Object} doc - jsPDF instance.
+   * @param {{y: number, pageCount: number}} state - Running layout state tracker.
+   * @param {CarbonStats} stats - User profile stats.
+   * @returns {{y: number, pageCount: number}} Updated state.
+   * @private
+   */
+  _drawPDFMetadataPage(doc, state, stats) {
+    doc.addPage();
+    state.pageCount++;
+    this._addFooterAndHeader(doc, '5. Badges & Verda Guide', state.pageCount);
+
     doc.setTextColor(15, 23, 42);
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(13);
@@ -1081,10 +1454,10 @@ const VerdaDOM = {
       doc.setFont('Helvetica', 'bold');
       doc.setFontSize(10);
       if (isUnlocked) {
-        doc.setTextColor(16, 185, 129); // Emerald green
+        doc.setTextColor(16, 185, 129);
         doc.text(`[✓]  ${ach.name}  (${ach.icon})`, 20, badgeY);
       } else {
-        doc.setTextColor(148, 163, 184); // Gray
+        doc.setTextColor(148, 163, 184);
         doc.text(`[ ]  ${ach.name}  (Locked)`, 20, badgeY);
       }
       doc.setFont('Helvetica', 'normal');
@@ -1095,13 +1468,13 @@ const VerdaDOM = {
       badgeY += 12;
     });
 
-    // Section 8 Header
     doc.setTextColor(15, 23, 42);
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(13);
     doc.text('7. Verda Guide Summary Insights', 20, 115);
     doc.line(20, 118, 190, 118);
 
+    const cat = stats.category_breakdown || { transportation: 0, electricity: 0, food: 0 };
     let greatestOppText = 'adjusting household utility consumption';
     if (cat.transportation > cat.electricity && cat.transportation > cat.food) {
       greatestOppText = 'modifying transportation choices, particularly replacing single gasoline car journeys with public transit or biking';
@@ -1116,7 +1489,6 @@ const VerdaDOM = {
     doc.setTextColor(71, 85, 105);
     doc.text(coachSummaryText, 20, 125, { maxWidth: 170 });
 
-    // Section 9 Footer Details Header
     doc.setTextColor(15, 23, 42);
     doc.setFont('Helvetica', 'bold');
     doc.setFontSize(13);
@@ -1132,6 +1504,55 @@ const VerdaDOM = {
 
     const timestampStr = new Date().toLocaleString();
     doc.text(`System Time of Export: ${timestampStr}`, 20, 195);
+
+    state.y = 195;
+    return state;
+  },
+
+  /**
+   * PDF Report Generator (Feature 7) - High quality, multi-page judge-ready Climate Passport.
+   * @param {CarbonStats} stats - User profile stats.
+   * @param {ActivityLog[]} logs - Logged entries list.
+   * @param {StreakData} streakData - Logging streak statistics.
+   * @param {Object} sliderValues - Slider parameters.
+   * @param {Recommendation[]} recommendations - Recommendation list.
+   * @returns {Promise<void>}
+   */
+  async generateClimatePassportPDF(stats, logs, streakData, sliderValues, recommendations) {
+    if (typeof window.jspdf === 'undefined' || typeof html2canvas === 'undefined') {
+      this.showToast('PDF and Canvas libraries are currently unavailable.', 'error');
+      return;
+    }
+
+    // Capture the chart canvas using html2canvas
+    const chartCanvas = document.getElementById('carbonTwinChart');
+    let chartImgData = null;
+    if (chartCanvas) {
+      try {
+        const canvasClone = await html2canvas(chartCanvas, {
+          scale: 2,
+          backgroundColor: null,
+          logging: false
+        });
+        chartImgData = canvasClone.toDataURL('image/png');
+      } catch (err) {
+        console.error('Failed to capture twin chart canvas:', err);
+      }
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('p', 'mm', 'a4');
+    const state = {
+      y: 0,
+      pageCount: 1
+    };
+
+    // Sequential multi-page drawing
+    this._drawPDFCoverPage(doc, state, stats);
+    this._drawPDFDashboardPage(doc, state, stats, chartImgData, sliderValues);
+    this._drawPDFTwinPage(doc, state, stats, sliderValues);
+    this._drawPDFHabitsPage(doc, state, recommendations);
+    this._drawPDFMetadataPage(doc, state, stats);
 
     // Save PDF
     doc.save('verda-climate-passport.pdf');

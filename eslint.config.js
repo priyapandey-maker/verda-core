@@ -4,7 +4,9 @@
  */
 
 module.exports = [
+  // Node.js files configuration
   {
+    files: ['src/**/*.js', 'eslint.config.js', 'jest.config.js', 'tests/**/*.js'],
     languageOptions: {
       ecmaVersion: 2022,
       sourceType: 'commonjs',
@@ -44,6 +46,54 @@ module.exports = [
       'no-undef': 'error',
       'no-console': 'error',
       'complexity': ['error', 10],
+      'consistent-return': 'error',
+      'semi': ['error', 'always'],
+      'quotes': ['error', 'single', { 'avoidEscape': true, 'allowTemplateLiterals': true }]
+    }
+  },
+  // Browser client-side JS configuration
+  {
+    files: ['public/js/**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'script', // Vanilla JS loaded via script tags
+      globals: {
+        // Browser Globals
+        window: 'readonly',
+        document: 'readonly',
+        fetch: 'readonly',
+        localStorage: 'readonly',
+        console: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        requestAnimationFrame: 'readonly',
+        cancelAnimationFrame: 'readonly',
+        performance: 'readonly',
+        Event: 'readonly',
+        CustomEvent: 'readonly',
+        // Third-party Libraries & App Globals
+        Chart: 'readonly',
+        jspdf: 'readonly',
+        html2canvas: 'readonly',
+        VerdaAPI: 'writable',
+        VerdaDOM: 'writable',
+        module: 'readonly'
+      }
+    },
+    rules: {
+      'no-unused-vars': [
+        'error',
+        {
+          'varsIgnorePattern': '^_',
+          'argsIgnorePattern': '^_',
+          'caughtErrorsIgnorePattern': '^_'
+        }
+      ],
+      'no-undef': 'error',
+      'no-console': 'off', // Browser files logging/debugging allowed
+      'complexity': ['error', 10], // Strictly limit complexity
       'consistent-return': 'error',
       'semi': ['error', 'always'],
       'quotes': ['error', 'single', { 'avoidEscape': true, 'allowTemplateLiterals': true }]

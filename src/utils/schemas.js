@@ -63,7 +63,10 @@ const logActivitySchema = z.object({
   }
 });
 
-// Custom error mappings for date parsing
+/**
+ * Schema validating the POST payload for carbon activity logging (with pre-processing).
+ * @type {import('zod').ZodSchema}
+ */
 const logActivityPayloadSchema = z.preprocess((val) => {
   if (!val || typeof val !== 'object') return val;
   return val;
@@ -71,6 +74,7 @@ const logActivityPayloadSchema = z.preprocess((val) => {
 
 /**
  * Schema validating the GET query parameters for retrieving logs.
+ * @type {import('zod').ZodSchema}
  */
 const getLogsQuerySchema = z.object({
   user_id: userIdSchema,
@@ -92,6 +96,7 @@ const getLogsQuerySchema = z.object({
 
 /**
  * Schema validating the POST payload for AI Coach question asking.
+ * @type {import('zod').ZodSchema}
  */
 const askCoachSchema = z.object({
   user_id: userIdSchema,
