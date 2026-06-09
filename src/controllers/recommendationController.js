@@ -12,6 +12,7 @@ const { validateUserId } = require('../utils/validators');
  * @param {import('express').Request} req - Express request.
  * @param {import('express').Response} res - Express response.
  * @param {import('express').NextFunction} next - Express next handler.
+ * @returns {Promise<import('express').Response|void>} Express response or next.
  */
 async function getRecommendations(req, res, next) {
   try {
@@ -19,7 +20,7 @@ async function getRecommendations(req, res, next) {
     const result = await recommendationService.getRecommendations(userId);
     return res.json(result);
   } catch (error) {
-    next(error);
+    return next(error);
   }
 }
 
@@ -28,6 +29,7 @@ async function getRecommendations(req, res, next) {
  * @param {import('express').Request} req - Express request.
  * @param {import('express').Response} res - Express response.
  * @param {import('express').NextFunction} next - Express next handler.
+ * @returns {Promise<import('express').Response|void>} Express response or next.
  */
 async function getCarbonTwin(req, res, next) {
   try {
@@ -35,7 +37,7 @@ async function getCarbonTwin(req, res, next) {
     const result = await twinService.getCarbonTwin(userId);
     return res.json(result);
   } catch (error) {
-    next(error);
+    return next(error);
   }
 }
 

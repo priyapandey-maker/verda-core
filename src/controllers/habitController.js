@@ -11,6 +11,7 @@ const { validateUserId } = require('../utils/validators');
  * @param {import('express').Request} req - Express request.
  * @param {import('express').Response} res - Express response.
  * @param {import('express').NextFunction} next - Express next handler.
+ * @returns {Promise<import('express').Response|void>} Express response or next.
  */
 async function getHabits(req, res, next) {
   try {
@@ -18,7 +19,7 @@ async function getHabits(req, res, next) {
     const result = await habitService.getHabits(userId);
     return res.json(result);
   } catch (error) {
-    next(error);
+    return next(error);
   }
 }
 

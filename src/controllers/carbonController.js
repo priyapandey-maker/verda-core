@@ -1,6 +1,6 @@
 /**
  * @file carbonController.js
- * @description Controller layer handling HTTP requests for carbon log inputs, statistics aggregates, and streak metrics.
+ * @description Controller layer handling HTTP requests for carbon log inputs, dashboard aggregates, and streaks.
  */
 
 const carbonService = require('../services/carbonService');
@@ -13,6 +13,7 @@ const { EMISSION_FACTORS, CAR_EMISSION_FACTOR, BUS_EMISSION_FACTOR } = require('
  * @param {import('express').Request} req - Express request.
  * @param {import('express').Response} res - Express response.
  * @param {import('express').NextFunction} next - Express next handler.
+ * @returns {Promise<import('express').Response|void>} Express response or next.
  */
 async function logActivity(req, res, next) {
   try {
@@ -20,7 +21,7 @@ async function logActivity(req, res, next) {
     const result = await carbonService.logActivity(validatedData);
     return res.status(201).json(result);
   } catch (error) {
-    next(error);
+    return next(error);
   }
 }
 
@@ -29,6 +30,7 @@ async function logActivity(req, res, next) {
  * @param {import('express').Request} req - Express request.
  * @param {import('express').Response} res - Express response.
  * @param {import('express').NextFunction} next - Express next handler.
+ * @returns {Promise<import('express').Response|void>} Express response or next.
  */
 async function getLogs(req, res, next) {
   try {
@@ -36,7 +38,7 @@ async function getLogs(req, res, next) {
     const result = await carbonService.getLogs(validatedQuery);
     return res.json(result);
   } catch (error) {
-    next(error);
+    return next(error);
   }
 }
 
@@ -45,6 +47,7 @@ async function getLogs(req, res, next) {
  * @param {import('express').Request} req - Express request.
  * @param {import('express').Response} res - Express response.
  * @param {import('express').NextFunction} next - Express next handler.
+ * @returns {Promise<import('express').Response|void>} Express response or next.
  */
 async function getDashboard(req, res, next) {
   try {
@@ -52,7 +55,7 @@ async function getDashboard(req, res, next) {
     const result = await carbonService.getDashboard(userId);
     return res.json(result);
   } catch (error) {
-    next(error);
+    return next(error);
   }
 }
 
@@ -61,6 +64,7 @@ async function getDashboard(req, res, next) {
  * @param {import('express').Request} req - Express request.
  * @param {import('express').Response} res - Express response.
  * @param {import('express').NextFunction} next - Express next handler.
+ * @returns {Promise<import('express').Response|void>} Express response or next.
  */
 async function getStreak(req, res, next) {
   try {
@@ -68,7 +72,7 @@ async function getStreak(req, res, next) {
     const result = await carbonService.getStreak(userId);
     return res.json(result);
   } catch (error) {
-    next(error);
+    return next(error);
   }
 }
 

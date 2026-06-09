@@ -3,9 +3,10 @@
  * @description Service layer managing recurring habit detection query algorithms.
  */
 
-const { getDb } = require('../db');
+const logRepository = require('../repositories/logRepository');
 const { formatLocalDate } = require('../utils/formatter');
 const { DAYS_IN_30D_WINDOW } = require('../config/constants');
+const { AppError } = require('../utils/errors');
 
 /**
  * Detects recurring user habits over the last 30 days.
@@ -14,8 +15,6 @@ const { DAYS_IN_30D_WINDOW } = require('../config/constants');
  */
 async function getHabits(user_id) {
   try {
-    const db = await getDb();
-
     // Define 30-day window
     const today = new Date();
     const thirtyDaysAgo = new Date();
@@ -23,22 +22,8 @@ async function getHabits(user_id) {
 
     const startDateStr = formatLocalDate(thirtyDaysAgo);
 
-    // Habit detection query
-    const query = `
-      SELECT 
-        category,
-        activity, 
-        COUNT(*) as frequency,
-        SUM(value) as total_value,
-        SUM(co2_emissions) as total_co2
-      FROM logs
-      WHERE user_id = ? AND activity_date >= ?
-      GROUP BY category, activity
-      HAVING frequency > 3
-      ORDER BY frequency DESC
-    `;
-
-    const habits = await db.all(query, [user_id, startDateStr]);
+    // Habit detection query delegated to repository
+    const habits = await logRepository.getHabits(user_id, startDateStr);
 
     // Format output with dynamic descriptions
     const formattedHabits = habits.map(h => {
@@ -69,10 +54,9 @@ async function getHabits(user_id) {
       },
       habits: formattedHabits
     };
-  } catch (_err) {
-    const error = new Error('Failed to retrieve habit metrics');
-    error.statusCode = 500;
-    throw error;
+  } catch (err) {
+    if (err instanceof AppError) throw err;
+    throw new AppError('Failed to retrieve habit metrics', 500);
   }
 }
 

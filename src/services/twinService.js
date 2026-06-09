@@ -3,10 +3,10 @@
  * @description Service layer managing yearly carbon projections and simulation targets.
  */
 
-const { getDb } = require('../db');
 const { getDashboardData, generateRecommendationsInternal } = require('./recommendationService');
 const { calculateYearlyTrajectory, calculateImprovedTrajectory } = require('../utils/projections');
 const { DAYS_IN_30D_WINDOW } = require('../config/constants');
+const { AppError, NotFoundError } = require('../utils/errors');
 
 /**
  * Retrieves the simulated carbon twin yearly projection statistics.
@@ -15,17 +15,14 @@ const { DAYS_IN_30D_WINDOW } = require('../config/constants');
  */
 async function getCarbonTwin(userId) {
   try {
-    const db = await getDb();
-    const dash = await getDashboardData(userId, db);
+    const dash = await getDashboardData(userId);
     if (!dash) {
-      const error = new Error('User not found');
-      error.statusCode = 404;
-      throw error;
+      throw new NotFoundError('User not found');
     }
 
     const currentTrajectoryYearly = calculateYearlyTrajectory(dash.currentEmissions, dash.dailyBaseline, dash.activeDays);
 
-    const recommendations = await generateRecommendationsInternal(userId, db);
+    const recommendations = await generateRecommendationsInternal(userId);
     const monthlyReduction = recommendations
       .filter(r => r.priority_score === 'High' || r.priority_score === 'Medium')
       .reduce((sum, r) => sum + r.estimated_co2_reduction, 0);
@@ -47,10 +44,8 @@ async function getCarbonTwin(userId) {
       }
     };
   } catch (err) {
-    if (err.statusCode) throw err;
-    const error = new Error('Failed to calculate projection metrics');
-    error.statusCode = 500;
-    throw error;
+    if (err instanceof AppError) throw err;
+    throw new AppError('Failed to calculate projection metrics', 500);
   }
 }
 

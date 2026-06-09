@@ -1,6 +1,6 @@
 /**
  * @file eslint.config.js
- * @description ESLint configuration for the Verda project (CommonJS Node environment).
+ * @description Strict ESLint configuration for the Verda project (CommonJS Node environment).
  */
 
 module.exports = [
@@ -34,7 +34,7 @@ module.exports = [
     },
     rules: {
       'no-unused-vars': [
-        'warn',
+        'error',
         {
           'varsIgnorePattern': '^_',
           'argsIgnorePattern': '^_',
@@ -42,9 +42,11 @@ module.exports = [
         }
       ],
       'no-undef': 'error',
-      'no-console': 'off',
-      'semi': ['warn', 'always'],
-      'quotes': ['warn', 'single', { 'avoidEscape': true, 'allowTemplateLiterals': true }]
+      'no-console': 'error',
+      'complexity': ['error', 10],
+      'consistent-return': 'error',
+      'semi': ['error', 'always'],
+      'quotes': ['error', 'single', { 'avoidEscape': true, 'allowTemplateLiterals': true }]
     }
   }
 ];

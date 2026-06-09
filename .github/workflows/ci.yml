@@ -1,0 +1,30 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 18.x
+        cache: 'npm'
+
+    - name: Install Dependencies
+      run: npm ci
+
+    - name: Run Linter
+      run: npm run lint
+
+    - name: Run Tests with Coverage Enforcements
+      run: npx jest --runInBand --detectOpenHandles --coverage --coverageThreshold='{"global":{"statements":95,"branches":95,"functions":95,"lines":95}}'

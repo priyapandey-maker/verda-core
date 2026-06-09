@@ -3,7 +3,8 @@
  * @description Service layer managing recommendation generation algorithms based on user logging patterns.
  */
 
-const { getDb } = require('../db');
+const userRepository = require('../repositories/userRepository');
+const logRepository = require('../repositories/logRepository');
 const {
   DAYS_IN_30D_WINDOW,
   BEEF_VEG_EMISSION_DIFF,
@@ -11,19 +12,121 @@ const {
 } = require('../config/constants');
 const { formatLocalDate } = require('../utils/formatter');
 const { calculateSustainabilityScore, calculateConsistencyBonus } = require('../utils/calculations');
+const { AppError } = require('../utils/errors');
 
 // Named Constants for recommendation estimations
 const TRANSIT_SWAP_SAVINGS_MULTIPLIER = 0.10; // gasoline car (0.18) - bus (0.08)
 const SWAP_PROPORTION = 0.5; // 50% swap
 
 /**
+ * Gets category-specific dominant carbon suggestions.
+ * @param {string} dominantCategory - Dominant carbon category.
+ * @param {number} dominantEmissions - Dominant category total emissions.
+ * @param {Array<object>} habits - Detected active user habits.
+ * @param {object} breakdown - Category breakdown emission weights.
+ * @returns {object|null} Generated recommendation object or null.
+ */
+function getDominantCategoryRecommendation(dominantCategory, dominantEmissions, habits, breakdown) {
+  if (dominantEmissions <= 0) return null;
+
+  if (dominantCategory === 'transportation') {
+    const carHabit = habits.find(h => h.activity === 'gasoline_car' || h.activity === 'diesel_car');
+    if (carHabit && carHabit.frequency > 2) {
+      const distance = carHabit.total_value;
+      const reduction = Number((distance * SWAP_PROPORTION * TRANSIT_SWAP_SAVINGS_MULTIPLIER).toFixed(1));
+      return {
+        id: 'rec_transit_swap',
+        title: 'Switch Driving to Public Transit',
+        category: 'transportation',
+        why: `Transportation is your largest emission category. You logged ${carHabit.frequency} car trips totaling ${distance.toFixed(0)} km. Swapping half of these to public transit saves significant emissions.`,
+        estimated_co2_reduction: reduction,
+        priority_score: 'High'
+      };
+    }
+    return {
+      id: 'rec_general_transit',
+      title: 'Consolidate Travel & Choose Train/Bus',
+      category: 'transportation',
+      why: `Transportation accounts for ${breakdown.transportation.toFixed(1)} kg CO2 (your highest source). Consolidating errands and taking public transit reduces carbon output.`,
+      estimated_co2_reduction: 15.0,
+      priority_score: 'Medium'
+    };
+  }
+
+  if (dominantCategory === 'food') {
+    const beefHabit = habits.find(h => h.activity === 'beef_meal');
+    if (beefHabit && beefHabit.frequency > 2) {
+      const reduction = Number((beefHabit.total_value * SWAP_PROPORTION * BEEF_VEG_EMISSION_DIFF).toFixed(1));
+      return {
+        id: 'rec_beef_swap',
+        title: 'Swap Beef for Plant-based Options',
+        category: 'food',
+        why: `Food is your highest carbon category, and beef is a high-impact food. You logged ${beefHabit.frequency} beef meals. Replacing half of them with vegetarian alternatives significantly lowers your footprint.`,
+        estimated_co2_reduction: reduction,
+        priority_score: 'High'
+      };
+    }
+    return {
+      id: 'rec_plant_day',
+      title: 'Introduce Meatless Mondays',
+      category: 'food',
+      why: `Food accounts for ${breakdown.food.toFixed(1)} kg CO2. Incorporating plant-based days cuts dietary emissions by about 10-15%.`,
+      estimated_co2_reduction: 12.0,
+      priority_score: 'Medium'
+    };
+  }
+
+  if (dominantCategory === 'electricity') {
+    const reduction = Number((breakdown.electricity * 0.15).toFixed(1));
+    return {
+      id: 'rec_home_efficiency',
+      title: 'Optimize Household Power Usage',
+      category: 'electricity',
+      why: `Electricity contributes ${breakdown.electricity.toFixed(1)} kg CO2 (your highest category). Simple changes like LED bulbs, turning off standby mode, and adjusting thermostat ranges can trim 15% easily.`,
+      estimated_co2_reduction: reduction,
+      priority_score: 'High'
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Gets score-based eco action recommendations.
+ * @param {number} score - Sustainability score.
+ * @returns {object|null} Generated recommendation or null.
+ */
+function getScoreBasedRecommendation(score) {
+  if (score < 60) {
+    return {
+      id: 'rec_sustainability_boost',
+      title: 'Initiate a 7-Day Carbon Fast',
+      category: 'general',
+      why: `Your sustainability score is low (${score}/100). Focus on walking/biking all short trips (<3km) and eating plant-based meals this week.`,
+      estimated_co2_reduction: 25.0,
+      priority_score: 'High'
+    };
+  }
+  if (score >= 85) {
+    return {
+      id: 'rec_sustainability_maintain',
+      title: 'Promote Community Eco-Actions',
+      category: 'general',
+      why: `Excellent score of ${score}/100! Share your sustainability journey to encourage others to transition to lower-carbon habits.`,
+      estimated_co2_reduction: 0.0,
+      priority_score: 'Low'
+    };
+  }
+  return null;
+}
+
+/**
  * Helper to fetch user dashboard data programmatically.
  * @param {number} userId - User ID.
- * @param {object} db - Database connection instance.
  * @returns {Promise<object|null>} Dashboard subset or null.
  */
-async function getDashboardData(userId, db) {
-  const user = await db.get('SELECT * FROM users WHERE id = ?', [userId]);
+async function getDashboardData(userId) {
+  const user = await userRepository.findById(userId);
   if (!user) return null;
 
   const today = new Date();
@@ -33,24 +136,13 @@ async function getDashboardData(userId, db) {
   const endDateStr = formatLocalDate(today);
   const startDateStr = formatLocalDate(thirtyDaysAgo);
 
-  const stats = await db.get(`
-    SELECT 
-      SUM(co2_emissions) as total,
-      SUM(CASE WHEN category = 'transportation' THEN co2_emissions ELSE 0 END) as transportation,
-      SUM(CASE WHEN category = 'electricity' THEN co2_emissions ELSE 0 END) as electricity,
-      SUM(CASE WHEN category = 'food' THEN co2_emissions ELSE 0 END) as food
-    FROM logs 
-    WHERE user_id = ? AND activity_date >= ? AND activity_date <= ?
-  `, [userId, startDateStr, endDateStr]);
-
-  const activeDaysResult = await db.get(`
-    SELECT COUNT(DISTINCT activity_date) as active_days
-    FROM logs
-    WHERE user_id = ? AND activity_date >= ? AND activity_date <= ?
-  `, [userId, startDateStr, endDateStr]);
+  // Parallel database lookups for dashboard totals and consistency metrics
+  const [stats, activeDays] = await Promise.all([
+    logRepository.getCategoryEmissions(userId, startDateStr, endDateStr),
+    logRepository.getActiveDaysCount(userId, startDateStr, endDateStr)
+  ]);
 
   const currentEmissions = stats.total || 0;
-  const activeDays = activeDaysResult.active_days || 0;
   const dailyBaseline = user.baseline_emissions || DEFAULT_BASELINE_EMISSIONS;
   const baselineEmissions = dailyBaseline * DAYS_IN_30D_WINDOW;
 
@@ -75,21 +167,14 @@ async function getDashboardData(userId, db) {
 /**
  * Generates recommendations based on the user's logged habits.
  * @param {number} userId - User ID.
- * @param {object} db - Database connection.
  * @returns {Promise<Array<object>>} Generated recommendations.
  */
-async function generateRecommendationsInternal(userId, db) {
-  const dash = await getDashboardData(userId, db);
+async function generateRecommendationsInternal(userId) {
+  const dash = await getDashboardData(userId);
   if (!dash) return [];
 
-  // Get habits query
-  const habits = await db.all(`
-    SELECT category, activity, COUNT(*) as frequency, SUM(value) as total_value, SUM(co2_emissions) as total_co2
-    FROM logs
-    WHERE user_id = ? AND activity_date >= ?
-    GROUP BY category, activity
-    ORDER BY frequency DESC
-  `, [userId, dash.startDateStr]);
+  // Get habits query delegated to repository
+  const habits = await logRepository.getHabits(userId, dash.startDateStr);
 
   const recommendations = [];
 
@@ -99,90 +184,14 @@ async function generateRecommendationsInternal(userId, db) {
   const dominantCategory = categoriesSorted[0][0];
   const dominantEmissions = categoriesSorted[0][1];
 
-  // Only produce category-specific suggestions if emissions are > 0
-  if (dominantEmissions > 0) {
-    if (dominantCategory === 'transportation') {
-      const carHabit = habits.find(h => h.activity === 'gasoline_car' || h.activity === 'diesel_car');
-      if (carHabit && carHabit.frequency > 2) {
-        // High frequency fossil driving
-        const distance = carHabit.total_value;
-        // Estimate 50% replacement with public transport
-        const reduction = Number((distance * SWAP_PROPORTION * TRANSIT_SWAP_SAVINGS_MULTIPLIER).toFixed(1));
-        recommendations.push({
-          id: 'rec_transit_swap',
-          title: 'Switch Driving to Public Transit',
-          category: 'transportation',
-          why: `Transportation is your largest emission category. You logged ${carHabit.frequency} car trips totaling ${distance.toFixed(0)} km. Swapping half of these to public transit saves significant emissions.`,
-          estimated_co2_reduction: reduction,
-          priority_score: 'High'
-        });
-      } else {
-        recommendations.push({
-          id: 'rec_general_transit',
-          title: 'Consolidate Travel & Choose Train/Bus',
-          category: 'transportation',
-          why: `Transportation accounts for ${breakdown.transportation.toFixed(1)} kg CO2 (your highest source). Consolidating errands and taking public transit reduces carbon output.`,
-          estimated_co2_reduction: 15.0,
-          priority_score: 'Medium'
-        });
-      }
-    } else if (dominantCategory === 'food') {
-      const beefHabit = habits.find(h => h.activity === 'beef_meal');
-      if (beefHabit && beefHabit.frequency > 2) {
-        // High beef consumption
-        // Estimate replacing 50% of beef meals with vegetarian
-        const reduction = Number((beefHabit.total_value * SWAP_PROPORTION * BEEF_VEG_EMISSION_DIFF).toFixed(1));
-        recommendations.push({
-          id: 'rec_beef_swap',
-          title: 'Swap Beef for Plant-based Options',
-          category: 'food',
-          why: `Food is your highest carbon category, and beef is a high-impact food. You logged ${beefHabit.frequency} beef meals. Replacing half of them with vegetarian alternatives significantly lowers your footprint.`,
-          estimated_co2_reduction: reduction,
-          priority_score: 'High'
-        });
-      } else {
-        recommendations.push({
-          id: 'rec_plant_day',
-          title: 'Introduce Meatless Mondays',
-          category: 'food',
-          why: `Food accounts for ${breakdown.food.toFixed(1)} kg CO2. Incorporating plant-based days cuts dietary emissions by about 10-15%.`,
-          estimated_co2_reduction: 12.0,
-          priority_score: 'Medium'
-        });
-      }
-    } else if (dominantCategory === 'electricity') {
-      // High electricity usage
-      const reduction = Number((breakdown.electricity * 0.15).toFixed(1));
-      recommendations.push({
-        id: 'rec_home_efficiency',
-        title: 'Optimize Household Power Usage',
-        category: 'electricity',
-        why: `Electricity contributes ${breakdown.electricity.toFixed(1)} kg CO2 (your highest category). Simple changes like LED bulbs, turning off standby mode, and adjusting thermostat ranges can trim 15% easily.`,
-        estimated_co2_reduction: reduction,
-        priority_score: 'High'
-      });
-    }
+  const categoryRec = getDominantCategoryRecommendation(dominantCategory, dominantEmissions, habits, breakdown);
+  if (categoryRec) {
+    recommendations.push(categoryRec);
   }
 
-  // 2. Score-based suggestions
-  if (dash.score < 60) {
-    recommendations.push({
-      id: 'rec_sustainability_boost',
-      title: 'Initiate a 7-Day Carbon Fast',
-      category: 'general',
-      why: `Your sustainability score is low (${dash.score}/100). Focus on walking/biking all short trips (<3km) and eating plant-based meals this week.`,
-      estimated_co2_reduction: 25.0,
-      priority_score: 'High'
-    });
-  } else if (dash.score >= 85) {
-    recommendations.push({
-      id: 'rec_sustainability_maintain',
-      title: 'Promote Community Eco-Actions',
-      category: 'general',
-      why: `Excellent score of ${dash.score}/100! Share your sustainability journey to encourage others to transition to lower-carbon habits.`,
-      estimated_co2_reduction: 0.0,
-      priority_score: 'Low'
-    });
+  const scoreRec = getScoreBasedRecommendation(dash.score);
+  if (scoreRec) {
+    recommendations.push(scoreRec);
   }
 
   // 3. Constant/Standby defaults (Ensure we always have at least two robust recommendations)
@@ -214,13 +223,11 @@ async function generateRecommendationsInternal(userId, db) {
  */
 async function getRecommendations(userId) {
   try {
-    const db = await getDb();
-    const recommendations = await generateRecommendationsInternal(userId, db);
+    const recommendations = await generateRecommendationsInternal(userId);
     return { user_id: userId, recommendations };
-  } catch (_err) {
-    const error = new Error('Failed to retrieve recommendations');
-    error.statusCode = 500;
-    throw error;
+  } catch (err) {
+    if (err instanceof AppError) throw err;
+    throw new AppError('Failed to retrieve recommendations', 500);
   }
 }
 

@@ -7,6 +7,7 @@ const path = require('path');
 const apiRouter = require('./routes/api');
 const { initDb } = require('./db');
 const errorHandler = require('./middleware/errorHandler');
+const logger = require('./utils/logger');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -32,7 +33,12 @@ app.use((req, res, next) => {
   const start = Date.now();
   res.on('finish', () => {
     const duration = Date.now() - start;
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} - ${res.statusCode} (${duration}ms)`);
+    logger.info({
+      method: req.method,
+      url: req.originalUrl,
+      statusCode: res.statusCode,
+      durationMs: duration
+    }, `${req.method} ${req.originalUrl} - ${res.statusCode} (${duration}ms)`);
   });
   next();
 });
@@ -59,20 +65,18 @@ app.use(errorHandler);
 // Initialize database and start the server
 async function startServer() {
   try {
-    console.log('Initializing database schema...');
+    logger.info('Initializing database schema...');
     await initDb();
-    console.log('Database schema initialization completed.');
+    logger.info('Database schema initialization completed.');
 
     // If running tests, do not start listening on a network port to prevent conflicts
     if (process.env.NODE_ENV !== 'test') {
       app.listen(PORT, () => {
-        console.log(`=========================================`);
-        console.log(`Verda MVP Server is active on port ${PORT}`);
-        console.log(`=========================================`);
+        logger.info(`Verda MVP Server is active on port ${PORT}`);
       });
     }
   } catch (error) {
-    console.error('Fatal initialization error:', error);
+    logger.error(error, 'Fatal initialization error');
     process.exit(1);
   }
 }

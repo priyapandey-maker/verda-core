@@ -1,0 +1,184 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Verda Carbon Operating System API",
+    "description": "REST API specification for logging carbon footprint activities, analyzing streaks/habits, calculating yearly projections, and querying the AI Coach.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Local development server"
+    }
+  ],
+  "paths": {
+    "/api/logs": {
+      "post": {
+        "summary": "Log a carbon activity",
+        "description": "Log travel, food, or electricity consumption and dynamically calculate emissions.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "user_id": { "type": "integer", "default": 1 },
+                  "activity_date": { "type": "string", "format": "date", "example": "2026-06-01" },
+                  "category": { "type": "string", "enum": ["transportation", "electricity", "food"] },
+                  "activity": { "type": "string", "example": "gasoline_car" },
+                  "value": { "type": "number", "minimum": 0.001 }
+                },
+                "required": ["activity_date", "category", "activity", "value"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Activity logged successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "log": {
+                      "type": "object",
+                      "properties": {
+                        "id": { "type": "integer" },
+                        "user_id": { "type": "integer" },
+                        "activity_date": { "type": "string" },
+                        "category": { "type": "string" },
+                        "activity": { "type": "string" },
+                        "value": { "type": "number" },
+                        "co2_emissions": { "type": "number" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Validation error" }
+        }
+      },
+      "get": {
+        "summary": "Retrieve user logs",
+        "parameters": [
+          { "name": "user_id", "in": "query", "required": false, "schema": { "type": "integer", "default": 1 } },
+          { "name": "start_date", "in": "query", "required": false, "schema": { "type": "string", "format": "date" } },
+          { "name": "end_date", "in": "query", "required": false, "schema": { "type": "string", "format": "date" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of user logs returned successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "logs": {
+                      "type": "array",
+                      "items": { "type": "object" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dashboard": {
+      "get": {
+        "summary": "Fetch dashboard metrics",
+        "parameters": [
+          { "name": "user_id", "in": "query", "required": false, "schema": { "type": "integer", "default": 1 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard statistics compiled successfully"
+          }
+        }
+      }
+    },
+    "/api/habits": {
+      "get": {
+        "summary": "Detect recurring carbon habits",
+        "parameters": [
+          { "name": "user_id", "in": "query", "required": false, "schema": { "type": "integer", "default": 1 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recurring habits detected successfully"
+          }
+        }
+      }
+    },
+    "/api/recommendations": {
+      "get": {
+        "summary": "Retrieve personalized eco-action recommendations",
+        "parameters": [
+          { "name": "user_id", "in": "query", "required": false, "schema": { "type": "integer", "default": 1 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recommendations generated successfully"
+          }
+        }
+      }
+    },
+    "/api/twin": {
+      "get": {
+        "summary": "Get yearly projections / Carbon Twin simulations",
+        "parameters": [
+          { "name": "user_id", "in": "query", "required": false, "schema": { "type": "integer", "default": 1 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Carbon Twin projections computed successfully"
+          }
+        }
+      }
+    },
+    "/api/streak": {
+      "get": {
+        "summary": "Fetch logging streaks",
+        "parameters": [
+          { "name": "user_id", "in": "query", "required": false, "schema": { "type": "integer", "default": 1 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Logging streak numbers retrieved successfully"
+          }
+        }
+      }
+    },
+    "/api/coach": {
+      "post": {
+        "summary": "Query AI Coach",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "user_id": { "type": "integer", "default": 1 },
+                  "question": { "type": "string", "maxLength": 500, "example": "How can I reduce my transportation carbon footprint?" }
+                },
+                "required": ["question"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Advice generated successfully"
+          }
+        }
+      }
+    }
+  }
+}

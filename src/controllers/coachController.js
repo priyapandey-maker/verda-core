@@ -1,6 +1,6 @@
 /**
  * @file coachController.js
- * @description Controller handling incoming requests for the conversational AI coach and fallback rules engine.
+ * @description Controller handling incoming requests for the conversational AI coach.
  */
 
 const coachService = require('../services/coachService');
@@ -11,6 +11,7 @@ const { validateAskCoach } = require('../utils/validators');
  * @param {import('express').Request} req - Express request.
  * @param {import('express').Response} res - Express response.
  * @param {import('express').NextFunction} next - Express next handler.
+ * @returns {Promise<import('express').Response|void>} Express response or next.
  */
 async function askCoach(req, res, next) {
   try {
@@ -18,7 +19,7 @@ async function askCoach(req, res, next) {
     const result = await coachService.askCoach(validatedData.user_id, validatedData.question);
     return res.json(result);
   } catch (error) {
-    next(error);
+    return next(error);
   }
 }
 

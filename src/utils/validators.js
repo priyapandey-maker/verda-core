@@ -1,142 +1,69 @@
 /**
  * @file validators.js
- * @description Centralized validation utility for API input parameters, query constraints, and payload properties.
+ * @description Centralized validation wrapper invoking Zod schemas and mapping exceptions to operational ValidationErrors.
  */
 
-const { EMISSION_FACTORS } = require('../config/constants');
+const {
+  userIdSchema,
+  logActivityPayloadSchema,
+  getLogsQuerySchema,
+  askCoachSchema
+} = require('./schemas');
+const { ValidationError } = require('./errors');
 
 /**
- * Validates if the given string is a valid date in format YYYY-MM-DD.
- * @param {string} dateStr - Date string to validate.
- * @returns {boolean} True if the date is valid.
+ * Validates data against a schema and throws a structured ValidationError on failure.
+ * @param {import('zod').ZodSchema} schema - Zod validator schema.
+ * @param {any} data - Input data payload to parse.
+ * @returns {any} Validated and formatted typed DTO.
+ * @throws {ValidationError} If schema parsing fails.
  */
-function isValidDate(dateStr) {
-  if (typeof dateStr !== 'string') return false;
-  const reg = /^\d{4}-\d{2}-\d{2}$/;
-  if (!reg.test(dateStr)) return false;
-  const d = new Date(dateStr);
-  return d instanceof Date && !isNaN(d.getTime());
+function parseWithSchema(schema, data) {
+  const result = schema.safeParse(data);
+  if (!result.success) {
+    const firstIssue = result.error.issues[0];
+    throw new ValidationError(firstIssue.message);
+  }
+  return result.data;
 }
 
 /**
- * Validates a user ID. Returns the parsed user ID (defaults to 1 if not a valid number).
- * @param {any} userId - User ID to validate.
+ * Validate user ID parameter.
+ * @param {any} userId - User identifier.
  * @returns {number} Parsed user ID.
  */
 function validateUserId(userId) {
-  const parsed = parseInt(userId, 10);
-  if (isNaN(parsed)) {
-    return 1;
-  }
-  return parsed;
+  return parseWithSchema(userIdSchema, userId);
 }
 
 /**
- * Validates the body payload for logging a new activity.
- * @param {object} body - Request body.
- * @returns {object} Validated and structured payload.
- * @throws {Error} If validation fails.
+ * Validate log activity payload body.
+ * @param {object} body - Payload body.
+ * @returns {object} Validated DTO object.
  */
 function validateLogActivity(body) {
-  const { user_id = 1, activity_date, category, activity, value } = body;
-
-  const parsedUserId = validateUserId(user_id);
-
-  if (!activity_date || !isValidDate(activity_date)) {
-    const error = new Error('Invalid or missing activity_date (format: YYYY-MM-DD)');
-    error.statusCode = 400;
-    throw error;
-  }
-
-  if (!category || !EMISSION_FACTORS[category]) {
-    const error = new Error('Invalid or missing category');
-    error.statusCode = 400;
-    throw error;
-  }
-
-  if (!activity || EMISSION_FACTORS[category][activity] === undefined) {
-    const error = new Error('Invalid or missing activity type');
-    error.statusCode = 400;
-    throw error;
-  }
-
-  if (value === undefined || typeof value !== 'number' || value <= 0) {
-    const error = new Error('Value must be a positive number');
-    error.statusCode = 400;
-    throw error;
-  }
-
-  return {
-    user_id: parsedUserId,
-    activity_date,
-    category,
-    activity,
-    value
-  };
+  return parseWithSchema(logActivityPayloadSchema, body);
 }
 
 /**
- * Validates the query parameters for filtering logs.
- * @param {object} query - Request query object.
- * @returns {object} Validated query parameters.
+ * Validate get logs query filters.
+ * @param {object} query - Request query parameters.
+ * @returns {object} Validated DTO object.
  */
 function validateGetLogsQuery(query) {
-  const user_id = validateUserId(query.user_id || 1);
-  const { start_date, end_date } = query;
-
-  const result = { user_id };
-
-  if (start_date) {
-    if (!isValidDate(start_date)) {
-      const error = new Error('Invalid start_date format (format: YYYY-MM-DD)');
-      error.statusCode = 400;
-      throw error;
-    }
-    result.start_date = start_date;
-  }
-
-  if (end_date) {
-    if (!isValidDate(end_date)) {
-      const error = new Error('Invalid end_date format (format: YYYY-MM-DD)');
-      error.statusCode = 400;
-      throw error;
-    }
-    result.end_date = end_date;
-  }
-
-  return result;
+  return parseWithSchema(getLogsQuerySchema, query);
 }
 
 /**
- * Validates request payload for AI Coach query.
+ * Validate ask coach payload body.
  * @param {object} body - Request body.
- * @returns {object} Validated coach request.
- * @throws {Error} If validation fails.
+ * @returns {object} Validated DTO object.
  */
 function validateAskCoach(body) {
-  const { question } = body;
-  const user_id = validateUserId(body.user_id || 1);
-
-  if (!question || typeof question !== 'string' || question.trim().length === 0) {
-    const error = new Error('Please provide a valid question for the AI coach.');
-    error.statusCode = 400;
-    throw error;
-  }
-
-  if (question.length > 500) {
-    const error = new Error('Question is too long. Please keep it under 500 characters.');
-    error.statusCode = 400;
-    throw error;
-  }
-
-  return {
-    user_id,
-    question: question.trim()
-  };
+  return parseWithSchema(askCoachSchema, body);
 }
 
 module.exports = {
-  isValidDate,
   validateUserId,
   validateLogActivity,
   validateGetLogsQuery,

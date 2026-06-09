@@ -3,7 +3,8 @@
  * @description Business logic layer for logging carbon activities, calculating user statistics, and tracking streaks.
  */
 
-const { getDb } = require('../db');
+const userRepository = require('../repositories/userRepository');
+const logRepository = require('../repositories/logRepository');
 const {
   DAYS_IN_30D_WINDOW,
   DEFAULT_BASELINE_EMISSIONS,
@@ -21,6 +22,65 @@ const {
   parseLocalDate,
   dayDiff
 } = require('../utils/formatter');
+const { AppError, NotFoundError } = require('../utils/errors');
+
+/**
+ * Helper to calculate the longest consecutive streak from a list of dates.
+ * @param {Array<string>} dates - Sorted unique date strings.
+ * @returns {number} The longest streak count.
+ */
+function calculateLongestStreak(dates) {
+  let longest = 0;
+  let tempStreak = 0;
+  for (let i = 0; i < dates.length; i++) {
+    if (i === 0) {
+      tempStreak = 1;
+    } else {
+      const prevDate = parseLocalDate(dates[i - 1]);
+      const currDate = parseLocalDate(dates[i]);
+      const diff = dayDiff(prevDate, currDate);
+      if (diff === 1) {
+        tempStreak++;
+      } else if (diff > 1) {
+        if (tempStreak > longest) {
+          longest = tempStreak;
+        }
+        tempStreak = 1;
+      }
+    }
+  }
+  return tempStreak > longest ? tempStreak : longest;
+}
+
+/**
+ * Helper to calculate the current active streak.
+ * @param {Array<string>} dates - Sorted unique date strings.
+ * @returns {number} The current streak count.
+ */
+function calculateCurrentStreak(dates) {
+  const todayVal = new Date();
+  const todayStr = formatLocalDate(todayVal);
+  const yesterdayVal = new Date();
+  yesterdayVal.setDate(todayVal.getDate() - 1);
+  const yesterdayStr = formatLocalDate(yesterdayVal);
+
+  const lastDateStr = dates[dates.length - 1];
+  let currentStreak = 0;
+  if (lastDateStr === todayStr || lastDateStr === yesterdayStr) {
+    currentStreak = 1;
+    for (let i = dates.length - 1; i > 0; i--) {
+      const prev = parseLocalDate(dates[i - 1]);
+      const curr = parseLocalDate(dates[i]);
+      const diff = dayDiff(prev, curr);
+      if (diff === 1) {
+        currentStreak++;
+      } else {
+        break;
+      }
+    }
+  }
+  return currentStreak;
+}
 
 /**
  * Log a new carbon activity into the database.
@@ -30,22 +90,24 @@ const {
 async function logActivity({ user_id, activity_date, category, activity, value }) {
   try {
     const co2_emissions = calculateEmissions(category, activity, value);
-    const db = await getDb();
 
     // Verify user exists, otherwise fallback to default user (id: 1)
-    const user = await db.get('SELECT id FROM users WHERE id = ?', [user_id]);
+    const user = await userRepository.findById(user_id);
     const finalUserId = user ? user.id : 1;
 
-    const result = await db.run(
-      `INSERT INTO logs (user_id, activity_date, category, activity, value, co2_emissions)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [finalUserId, activity_date, category, activity, value, co2_emissions]
-    );
+    const insertedId = await logRepository.create({
+      user_id: finalUserId,
+      activity_date,
+      category,
+      activity,
+      value,
+      co2_emissions
+    });
 
     return {
       message: 'Activity logged successfully',
       log: {
-        id: result.lastID,
+        id: insertedId,
         user_id: finalUserId,
         activity_date,
         category,
@@ -54,10 +116,9 @@ async function logActivity({ user_id, activity_date, category, activity, value }
         co2_emissions
       }
     };
-  } catch (_err) {
-    const error = new Error('Failed to log activity');
-    error.statusCode = 500;
-    throw error;
+  } catch (err) {
+    if (err instanceof AppError) throw err;
+    throw new AppError('Failed to log activity', 500);
   }
 }
 
@@ -68,28 +129,11 @@ async function logActivity({ user_id, activity_date, category, activity, value }
  */
 async function getLogs({ user_id, start_date, end_date }) {
   try {
-    const db = await getDb();
-
-    let query = 'SELECT * FROM logs WHERE user_id = ?';
-    const params = [user_id];
-
-    if (start_date) {
-      query += ' AND activity_date >= ?';
-      params.push(start_date);
-    }
-    if (end_date) {
-      query += ' AND activity_date <= ?';
-      params.push(end_date);
-    }
-
-    query += ' ORDER BY activity_date DESC, id DESC';
-    const logs = await db.all(query, params);
-
+    const logs = await logRepository.findByUserId(user_id, start_date, end_date);
     return { logs };
-  } catch (_err) {
-    const error = new Error('Failed to retrieve logs');
-    error.statusCode = 500;
-    throw error;
+  } catch (err) {
+    if (err instanceof AppError) throw err;
+    throw new AppError('Failed to retrieve logs', 500);
   }
 }
 
@@ -100,14 +144,10 @@ async function getLogs({ user_id, start_date, end_date }) {
  */
 async function getDashboard(user_id) {
   try {
-    const db = await getDb();
-
     // 1. Fetch user data (specifically baseline_emissions)
-    const user = await db.get('SELECT * FROM users WHERE id = ?', [user_id]);
+    const user = await userRepository.findById(user_id);
     if (!user) {
-      const error = new Error('User not found');
-      error.statusCode = 404;
-      throw error;
+      throw new NotFoundError('User not found');
     }
 
     // Define 30-day window dates
@@ -118,17 +158,11 @@ async function getDashboard(user_id) {
     const endDateStr = formatLocalDate(today);
     const startDateStr = formatLocalDate(thirtyDaysAgo);
 
-    // 2. Fetch total and category emissions
-    const totalEmissionsQuery = `
-      SELECT 
-        SUM(co2_emissions) as total,
-        SUM(CASE WHEN category = 'transportation' THEN co2_emissions ELSE 0 END) as transportation,
-        SUM(CASE WHEN category = 'electricity' THEN co2_emissions ELSE 0 END) as electricity,
-        SUM(CASE WHEN category = 'food' THEN co2_emissions ELSE 0 END) as food
-      FROM logs 
-      WHERE user_id = ? AND activity_date >= ? AND activity_date <= ?
-    `;
-    const emissionsResult = await db.get(totalEmissionsQuery, [user_id, startDateStr, endDateStr]);
+    // 2. Fetch total emissions and active days in parallel
+    const [emissionsResult, activeDays] = await Promise.all([
+      logRepository.getCategoryEmissions(user_id, startDateStr, endDateStr),
+      logRepository.getActiveDaysCount(user_id, startDateStr, endDateStr)
+    ]);
 
     const currentEmissions = emissionsResult.total || 0;
     const categoryBreakdown = {
@@ -136,15 +170,6 @@ async function getDashboard(user_id) {
       electricity: emissionsResult.electricity || 0,
       food: emissionsResult.food || 0
     };
-
-    // 3. Consistency Bonus: Count of distinct active days in the 30-day window
-    const activeDaysQuery = `
-      SELECT COUNT(DISTINCT activity_date) as active_days
-      FROM logs
-      WHERE user_id = ? AND activity_date >= ? AND activity_date <= ?
-    `;
-    const activeDaysResult = await db.get(activeDaysQuery, [user_id, startDateStr, endDateStr]);
-    const activeDays = activeDaysResult.active_days || 0;
     
     // Consistency bonus calculation
     const consistencyBonus = calculateConsistencyBonus(activeDays);
@@ -182,11 +207,9 @@ async function getDashboard(user_id) {
         EMISSION_FACTORS
       }
     };
-  } catch (_err) {
-    if (_err.statusCode) throw _err;
-    const error = new Error('Failed to retrieve dashboard data');
-    error.statusCode = 500;
-    throw error;
+  } catch (err) {
+    if (err instanceof AppError) throw err;
+    throw new AppError('Failed to retrieve dashboard data', 500);
   }
 }
 
@@ -197,82 +220,28 @@ async function getDashboard(user_id) {
  */
 async function getStreak(user_id) {
   try {
-    const db = await getDb();
-
-    const user = await db.get('SELECT * FROM users WHERE id = ?', [user_id]);
+    const user = await userRepository.findById(user_id);
     if (!user) {
-      const error = new Error('User not found');
-      error.statusCode = 404;
-      throw error;
+      throw new NotFoundError('User not found');
     }
 
     // Get distinct activity dates sorted ascending
-    const logs = await db.all(
-      'SELECT DISTINCT activity_date FROM logs WHERE user_id = ? ORDER BY activity_date ASC',
-      [user_id]
-    );
+    const dates = await logRepository.getDistinctActivityDates(user_id);
 
-    if (logs.length === 0) {
+    if (dates.length === 0) {
       return { currentStreak: 0, longestStreak: 0 };
     }
 
-    const dates = logs.map(l => l.activity_date);
-
-    let longest = 0;
-    let tempStreak = 0;
-
-    for (let i = 0; i < dates.length; i++) {
-      if (i === 0) {
-        tempStreak = 1;
-      } else {
-        const prevDate = parseLocalDate(dates[i - 1]);
-        const currDate = parseLocalDate(dates[i]);
-        const diff = dayDiff(prevDate, currDate);
-        if (diff === 1) {
-          tempStreak++;
-        } else if (diff > 1) {
-          if (tempStreak > longest) {
-            longest = tempStreak;
-          }
-          tempStreak = 1;
-        }
-      }
-    }
-    if (tempStreak > longest) {
-      longest = tempStreak;
-    }
-
-    const todayVal = new Date();
-    const todayStr = formatLocalDate(todayVal);
-    const yesterdayVal = new Date();
-    yesterdayVal.setDate(todayVal.getDate() - 1);
-    const yesterdayStr = formatLocalDate(yesterdayVal);
-
-    const lastDateStr = dates[dates.length - 1];
-    let currentStreak = 0;
-    if (lastDateStr === todayStr || lastDateStr === yesterdayStr) {
-      currentStreak = 1;
-      for (let i = dates.length - 1; i > 0; i--) {
-        const prev = parseLocalDate(dates[i - 1]);
-        const curr = parseLocalDate(dates[i]);
-        const diff = dayDiff(prev, curr);
-        if (diff === 1) {
-          currentStreak++;
-        } else {
-          break;
-        }
-      }
-    }
+    const longest = calculateLongestStreak(dates);
+    const current = calculateCurrentStreak(dates);
 
     return {
-      currentStreak,
+      currentStreak: current,
       longestStreak: longest
     };
-  } catch (_err) {
-    if (_err.statusCode) throw _err;
-    const error = new Error('Failed to retrieve streak data');
-    error.statusCode = 500;
-    throw error;
+  } catch (err) {
+    if (err instanceof AppError) throw err;
+    throw new AppError('Failed to retrieve streak data', 500);
   }
 }
 
