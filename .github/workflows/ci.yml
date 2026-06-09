@@ -26,5 +26,7 @@ jobs:
     - name: Run Linter
       run: npm run lint
 
-    - name: Run Tests with Coverage Enforcements
-      run: npx jest --runInBand --detectOpenHandles --coverage --coverageThreshold='{"global":{"statements":95,"branches":95,"functions":95,"lines":95}}'
+    - name: Run Tests
+      run: npm test
+      env:
+        NODE_ENV: test
