@@ -80,6 +80,13 @@ const VerdaAPI = {
   },
 
   /**
+   * Fetch current and longest logging streak
+   */
+  async getStreak(userId = 1) {
+    return this.request(`/streak?user_id=${userId}`);
+  },
+
+  /**
    * Ask AI Coach a question
    */
   async askCoach(question, userId = 1) {

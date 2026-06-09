@@ -4,10 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Verda - Carbon Footprint Tracking, Projections & What-If Simulator Dashboard. Understand, track, and simulate daily carbon reduction impacts.">
-  <title>Verda - Carbon Footprint Dashboard & Simulator</title>
+  <title>Verda — Your Personal Climate Operating System</title>
   <link rel="stylesheet" href="css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
+  <!-- Confetti canvas overlay for unlocks -->
+  <canvas id="confetti-canvas" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9999;"></canvas>
+
   <!-- Accessibility Skip link -->
   <a href="#dashboard-main" class="skip-link">Skip to main content</a>
 
@@ -15,9 +21,17 @@
     <header class="glass" role="banner">
       <div class="logo">
         <span aria-hidden="true">🌱</span>
-        <h1 id="logo-title">Verda</h1>
+        <div>
+          <h1 id="logo-title" style="margin: 0; line-height: 1.1;">Verda</h1>
+          <p class="tagline" style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500; margin: 0;">Your Personal Climate Operating System</p>
+        </div>
       </div>
-      <div class="user-profile">
+      <div class="user-profile" style="display: flex; align-items: center; gap: 1.5rem;">
+        <div class="streak-widget" id="streak-widget-display" style="display: none; align-items: center; gap: 6px; background: rgba(245, 158, 11, 0.15); padding: 4px 12px; border-radius: var(--radius-sm); border: 1px solid rgba(245, 158, 11, 0.3); font-weight: 600; font-size: 0.9rem; color: #fbbf24;">
+          <span aria-hidden="true">🔥</span>
+          <span id="streak-count">0</span> Day Green Streak
+          <span style="font-size: 0.75rem; opacity: 0.8; font-weight: 400;">(Max <span id="longest-streak-count">0</span>)</span>
+        </div>
         <span id="user-greeting" aria-live="polite">Loading profile...</span>
       </div>
     </header>
@@ -29,7 +43,7 @@
         
         <!-- SUSTAINABILITY SCORE CARD -->
         <section class="card glass score-card" aria-labelledby="score-title">
-          <h2 id="score-title" class="card-title">Sustainability Score</h2>
+          <h2 id="score-title" class="card-title">EarthScore</h2>
           <div class="score-display">
             <svg class="score-ring" viewBox="0 0 120 120" width="120" height="120" aria-hidden="true">
               <circle class="score-ring-bg" cx="60" cy="60" r="52" />
@@ -50,6 +64,24 @@
               <span class="stat-label">Consistency Bonus</span>
               <span class="stat-value" id="bonus-val">--</span>
             </div>
+          </div>
+        </section>
+
+        <!-- NET ZERO PROGRESS TRACKER CARD (FEATURE 2) -->
+        <section class="card glass net-zero-card" aria-labelledby="net-zero-title">
+          <h2 id="net-zero-title" class="card-title">Net Zero Progress</h2>
+          <p class="section-desc">Progress toward achieving a climate-neutral (net-zero) footprint.</p>
+          <div class="net-zero-display" style="display: flex; flex-direction: column; align-items: center; margin: 1rem 0;">
+            <div class="score-display" style="margin: 0;">
+              <svg class="score-ring" viewBox="0 0 120 120" width="120" height="120" aria-hidden="true">
+                <circle class="score-ring-bg" cx="60" cy="60" r="52" />
+                <circle class="score-ring-fill" id="net-zero-ring-fill" cx="60" cy="60" r="52" stroke-dasharray="326.7" stroke-dashoffset="326.7" style="stroke: var(--accent-teal);" />
+              </svg>
+              <div class="score-text-container">
+                <span class="score-number" id="net-zero-percentage-val">0%</span>
+              </div>
+            </div>
+            <div class="net-zero-motivation" id="net-zero-motivation-text" style="font-weight: 600; font-size: 1.1rem; color: var(--accent-teal); margin-top: 1rem;">Getting Started</div>
           </div>
         </section>
 
@@ -96,7 +128,7 @@
 
         <!-- WHAT-IF SIMULATOR CARD -->
         <section class="card glass simulator-card" aria-labelledby="simulator-title">
-          <h2 id="simulator-title" class="card-title">What-If Simulator</h2>
+          <h2 id="simulator-title" class="card-title">FutureShift Simulator</h2>
           <p class="section-desc">Adjust the sliders to simulate actions and see your projected carbon reduction instantly.</p>
           
           <div class="simulator-sliders">
@@ -136,7 +168,7 @@
         
         <!-- CARBON TWIN VISUALIZATION CARD -->
         <section class="card glass twin-card" aria-labelledby="twin-title">
-          <h2 id="twin-title" class="card-title">Carbon Twin Yearly Projection</h2>
+          <h2 id="twin-title" class="card-title">Verda Twin Yearly Projection</h2>
           <p class="section-desc">Your projected yearly emissions compared side-by-side with your simulated habits trajectory.</p>
 
           <div class="twin-projections-container">
@@ -160,8 +192,9 @@
             </div>
 
             <!-- Comparison bar charts with target line overlay -->
-            <div class="twin-charts-wrapper">
-              <div class="twin-charts">
+            <div class="twin-charts-wrapper" style="position: relative; min-height: 250px; width: 100%; margin: 1rem 0;">
+              <!-- Hidden twin-charts container for JSDOM tests compatibility -->
+              <div class="twin-charts" style="display: none; position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none;">
                 <div class="twin-bar-group">
                   <div class="twin-bar-fill current" id="twin-bar-current" style="height: 100%;" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" aria-label="Current yearly carbon trajectory">
                     <span class="tooltip-text" id="tooltip-current">--</span>
@@ -178,6 +211,8 @@
                   <span class="target-goal-label" id="target-goal-label">Goal Target</span>
                 </div>
               </div>
+              <!-- Interactive Chart.js Canvas -->
+              <canvas id="carbonTwinChart" aria-label="Carbon Twin Projection Chart" role="img" style="width: 100%; height: 250px; max-height: 280px;"></canvas>
             </div>
 
             <!-- Target Goal Input -->
@@ -192,30 +227,75 @@
           </div>
         </section>
 
-        <!-- IMPACT SUMMARY CARD -->
+        <!-- YOUR CLIMATE IMPACT WOW CARD (FEATURE 10: equivalents + FEATURE 7: Shareable PDF) -->
         <section class="card glass impact-card" aria-labelledby="impact-title">
-          <h2 id="impact-title" class="card-title">Simulated Impact Summary</h2>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+            <h2 id="impact-title" class="card-title" style="margin: 0;">Your Climate Impact</h2>
+            <button type="button" class="btn-secondary" id="btn-generate-report" style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; font-size: 0.85rem;">
+              <span>📄</span> Climate Passport
+            </button>
+          </div>
+          <p class="section-desc">Instantly convert your simulated yearly carbon savings into real-world equivalents.</p>
           <div class="impact-summary-content">
-            <p class="impact-header">If you adopt all selected changes:</p>
-            <div class="impact-headline">
-              Yearly CO₂ reduction: <span id="impact-co2-reduction">0.0</span> kg
+            <div class="impact-headline" style="font-size: 1.15rem; margin-bottom: 1.5rem; font-weight: 600; color: var(--accent-emerald);">
+              Yearly CO₂ Reduction: <span id="impact-co2-reduction">0.0</span> kg
             </div>
             
-            <p class="equivalence-header">Equivalent to:</p>
-            <ul class="equivalence-list">
-              <li>
-                <span class="eq-icon" aria-hidden="true">🌲</span>
-                <span class="eq-text"><strong id="impact-trees">0</strong> trees absorbing CO₂ for a year</span>
+            <ul class="equivalence-list" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; list-style: none;">
+              <li class="wow-equivalent-item" style="background: rgba(255, 255, 255, 0.03); padding: 0.75rem 1rem; border-radius: var(--radius-md); border: 1px solid rgba(255, 255, 255, 0.05); display: flex; align-items: center; gap: 0.75rem;">
+                <span class="eq-icon" aria-hidden="true" style="font-size: 1.75rem;">🌳</span>
+                <div style="display: flex; flex-direction: column;">
+                  <span style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary);" id="impact-trees">0</span>
+                  <span style="font-size: 0.75rem; color: var(--text-muted);">Trees Saved</span>
+                </div>
               </li>
-              <li>
-                <span class="eq-icon" aria-hidden="true">🚗</span>
-                <span class="eq-text"><strong id="impact-km">0</strong> km not driven in a gasoline car</span>
+              <li class="wow-equivalent-item" style="background: rgba(255, 255, 255, 0.03); padding: 0.75rem 1rem; border-radius: var(--radius-md); border: 1px solid rgba(255, 255, 255, 0.05); display: flex; align-items: center; gap: 0.75rem;">
+                <span class="eq-icon" aria-hidden="true" style="font-size: 1.75rem;">🚗</span>
+                <div style="display: flex; flex-direction: column;">
+                  <span style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary);" id="impact-km">0</span>
+                  <span style="font-size: 0.75rem; color: var(--text-muted);">km Not Driven</span>
+                </div>
               </li>
-              <li>
-                <span class="eq-icon" aria-hidden="true">🏠</span>
-                <span class="eq-text"><strong id="impact-homes">0</strong> homes powered for a day</span>
+              <li class="wow-equivalent-item" style="background: rgba(255, 255, 255, 0.03); padding: 0.75rem 1rem; border-radius: var(--radius-md); border: 1px solid rgba(255, 255, 255, 0.05); display: flex; align-items: center; gap: 0.75rem;">
+                <span class="eq-icon" aria-hidden="true" style="font-size: 1.75rem;">🏠</span>
+                <div style="display: flex; flex-direction: column;">
+                  <span style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary);" id="impact-homes">0</span>
+                  <span style="font-size: 0.75rem; color: var(--text-muted);">Home Days Saved</span>
+                </div>
+              </li>
+              <li class="wow-equivalent-item" style="background: rgba(255, 255, 255, 0.03); padding: 0.75rem 1rem; border-radius: var(--radius-md); border: 1px solid rgba(255, 255, 255, 0.05); display: flex; align-items: center; gap: 0.75rem;">
+                <span class="eq-icon" aria-hidden="true" style="font-size: 1.75rem;">✈️</span>
+                <div style="display: flex; flex-direction: column;">
+                  <span style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary);" id="impact-flights">0</span>
+                  <span style="font-size: 0.75rem; color: var(--text-muted);">Flights Avoided</span>
+                </div>
+              </li>
+              <li class="wow-equivalent-item" style="grid-column: span 2; background: rgba(255, 255, 255, 0.03); padding: 0.75rem 1rem; border-radius: var(--radius-md); border: 1px solid rgba(255, 255, 255, 0.05); display: flex; align-items: center; gap: 0.75rem;">
+                <span class="eq-icon" aria-hidden="true" style="font-size: 1.75rem;">📱</span>
+                <div style="display: flex; flex-direction: column;">
+                  <span style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary);" id="impact-phones">0</span>
+                  <span style="font-size: 0.75rem; color: var(--text-muted);">Phone Charges Avoided</span>
+                </div>
               </li>
             </ul>
+          </div>
+        </section>
+
+        <!-- PERSONALIZED INSIGHTS CARD (FEATURE 6) -->
+        <section class="card glass insights-card" aria-labelledby="insights-title">
+          <h2 id="insights-title" class="card-title">Impact Lens</h2>
+          <p class="section-desc">Data-driven observations about your carbon habits this month.</p>
+          <ul class="insights-list" id="insights-list-container" style="display: flex; flex-direction: column; gap: 0.75rem; padding-left: 1.25rem; color: var(--text-secondary);">
+            <li>Loading insights based on your footprint...</li>
+          </ul>
+        </section>
+
+        <!-- ACHIEVEMENTS CARD (FEATURE 3) -->
+        <section class="card glass achievements-card" aria-labelledby="achievements-title">
+          <h2 id="achievements-title" class="card-title">EcoBadges</h2>
+          <p class="section-desc">Unlock badges by logging consistently and reducing emissions.</p>
+          <div class="achievements-grid" id="achievements-grid-container" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1rem;">
+            <!-- Badges will be rendered dynamically -->
           </div>
         </section>
 
@@ -296,7 +376,7 @@
 
         <!-- AI SUSTAINABILITY COACH CARD -->
         <section class="card glass coach-chat-card" aria-labelledby="coach-chat-title">
-          <h2 id="coach-chat-title" class="card-title">🌱 AI Sustainability Coach</h2>
+          <h2 id="coach-chat-title" class="card-title">🌱 Verda Guide</h2>
           <p class="section-desc">Ask Verda anything about your habits, emissions, or get tailored carbon saving suggestions.</p>
           
           <div class="chat-console">
@@ -305,9 +385,9 @@
                 Hello! I am your AI Sustainability Coach. Ask me how to improve your scores or reduce your footprint!
               </div>
             </div>
-            <form id="coach-chat-form" class="chat-input-area">
-              <input type="text" id="input-coach-question" placeholder="e.g., How can I reduce my transportation emissions?" aria-label="Ask the AI Coach a question" required autocomplete="off">
-              <button type="submit" class="chat-send-btn" id="btn-send-coach" aria-label="Send message">Send</button>
+            <form id="coach-chat-form" class="chat-input-area" style="display: flex; align-items: flex-end; background: rgba(15, 23, 42, 0.6); border-top: 1px solid rgba(255, 255, 255, 0.05);">
+              <textarea id="input-coach-question" placeholder="e.g., How can I reduce my transportation emissions?" aria-label="Ask the AI Coach a question" required autocomplete="off" rows="1" style="flex: 1; background: transparent; border: none; padding: 1rem; font-size: 0.95rem; outline: none; color: var(--text-primary); resize: none; overflow-y: auto; height: 50px; font-family: inherit; line-height: 1.4;"></textarea>
+              <button type="submit" class="chat-send-btn" id="btn-send-coach" aria-label="Send message" style="height: 50px; line-height: 50px; padding: 0 1.5rem;">Send</button>
             </form>
           </div>
         </section>

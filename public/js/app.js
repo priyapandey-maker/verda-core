@@ -4,6 +4,9 @@
 
 // Cache dashboard stats locally to enable sub-millisecond What-If simulator updates
 let cachedDashboardStats = null;
+let cachedLogs = null;
+let cachedStreak = null;
+let cachedRecommendations = null;
 
 document.addEventListener('DOMContentLoaded', () => {
   // Initialize form interaction panels and default date
@@ -44,6 +47,52 @@ document.addEventListener('DOMContentLoaded', () => {
   if (coachForm) {
     coachForm.addEventListener('submit', handleCoachSubmit);
   }
+
+  // Enter to send / Shift+Enter for newline key handler on the chat textarea
+  const chatInput = VerdaDOM.$('#input-coach-question');
+  if (chatInput && coachForm) {
+    chatInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        // Trigger submit
+        const submitEvent = new Event('submit', { cancelable: true });
+        coachForm.dispatchEvent(submitEvent);
+      }
+    });
+  }
+
+  // Bind Generate PDF Report button action
+  const btnReport = VerdaDOM.$('#btn-generate-report');
+  if (btnReport) {
+    btnReport.addEventListener('click', async () => {
+      if (cachedDashboardStats && cachedStreak) {
+        const transit = parseInt(VerdaDOM.$('#sim-transit').value, 10) || 0;
+        const veg = parseInt(VerdaDOM.$('#sim-veg').value, 10) || 0;
+        const electricity = parseInt(VerdaDOM.$('#sim-electricity').value, 10) || 0;
+        
+        btnReport.disabled = true;
+        btnReport.innerHTML = 'Generating Climate Passport...';
+        
+        try {
+          await VerdaDOM.generateClimatePassportPDF(
+            cachedDashboardStats,
+            cachedLogs || [],
+            cachedStreak,
+            { transit, veg, electricity },
+            cachedRecommendations || []
+          );
+        } catch (error) {
+          console.error('Failed to generate Climate Passport:', error);
+          VerdaDOM.showToast('Failed to generate Climate Passport. Please try again.', 'error');
+        } finally {
+          btnReport.disabled = false;
+          btnReport.innerHTML = '<span>📄</span> Climate Passport';
+        }
+      } else {
+        VerdaDOM.showToast('Please wait for the dashboard to finish loading data.', 'warning');
+      }
+    });
+  }
 });
 
 /**
@@ -52,13 +101,17 @@ document.addEventListener('DOMContentLoaded', () => {
 async function refreshDashboardData(userId = 1) {
   try {
     // Parallelize network requests to prevent waterfall delays
-    const [stats, logsData, recsData] = await Promise.all([
+    const [stats, logsData, recsData, streakData] = await Promise.all([
       VerdaAPI.getDashboard(userId),
       VerdaAPI.getLogs(userId),
-      VerdaAPI.getRecommendations(userId)
+      VerdaAPI.getRecommendations(userId),
+      VerdaAPI.getStreak ? VerdaAPI.getStreak(userId).catch(() => ({ currentStreak: 0, longestStreak: 0 })) : { currentStreak: 0, longestStreak: 0 }
     ]);
 
     cachedDashboardStats = stats;
+    cachedLogs = logsData.logs;
+    cachedStreak = streakData;
+    cachedRecommendations = recsData.recommendations;
 
     // Cache dynamic constants returned from stats payload in VerdaDOM.constants
     if (stats && stats.constants) {
@@ -68,11 +121,17 @@ async function refreshDashboardData(userId = 1) {
     // Render dashboard widgets
     VerdaDOM.renderDashboard(stats);
 
+    // Render Streak Widget
+    VerdaDOM.renderStreak(streakData);
+
     // Initial Twin projection calculations based on default slider states (0)
     updateSimulatorProjections();
 
     // Render history logs list
     VerdaDOM.renderLogsList(logsData.logs);
+
+    // Render Personalized Insights
+    VerdaDOM.renderPersonalizedInsights(stats, logsData.logs);
 
     // Render prioritized recommendations list
     VerdaDOM.renderPrioritizedRecommendations(recsData.recommendations);
@@ -141,7 +200,15 @@ function updateSimulatorProjections() {
   const veg = parseInt(VerdaDOM.$('#sim-veg').value, 10) || 0;
   const electricity = parseInt(VerdaDOM.$('#sim-electricity').value, 10) || 0;
 
-  VerdaDOM.renderTwinAndSimulator(cachedDashboardStats, { transit, veg, electricity });
+  const totalYearlySavings = VerdaDOM.renderTwinAndSimulator(cachedDashboardStats, { transit, veg, electricity });
+
+  // Update Net Zero Progress Tracker
+  VerdaDOM.renderNetZeroProgress(cachedDashboardStats, totalYearlySavings);
+
+  // Check achievements after simulator changes
+  const simulatorUsed = (transit > 0 || veg > 0 || electricity > 0);
+  const score = cachedDashboardStats.sustainability_score || 0;
+  VerdaDOM.checkAndUnlockAchievements(cachedDashboardStats, cachedLogs || [], score, totalYearlySavings, simulatorUsed);
 }
 
 /**

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-const { logActivity, getLogs, getDashboard } = require('../controllers/carbonController');
+const { logActivity, getLogs, getDashboard, getStreak } = require('../controllers/carbonController');
 const { getHabits } = require('../controllers/habitController');
 const { getRecommendations, getCarbonTwin } = require('../controllers/recommendationController');
 const { askCoach } = require('../controllers/coachController');
@@ -12,6 +12,9 @@ router.get('/logs', getLogs);
 
 // Sustainability Statistics Dashboard
 router.get('/dashboard', getDashboard);
+
+// Streak Widget Route
+router.get('/streak', getStreak);
 
 // Habit Detection Route
 router.get('/habits', getHabits);

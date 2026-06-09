@@ -24,8 +24,22 @@ describe('Verda Frontend Integration & Accessibility Suite', () => {
       document.body.appendChild(toastContainer);
     }
 
-    // Mock global fetch API
-    global.fetch = jest.fn();
+    // Mock global fetch API with default resolved values to avoid exceptions during DOMContentLoaded initialization
+    global.fetch = jest.fn().mockImplementation(() =>
+      Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          logs: [],
+          recommendations: [],
+          currentStreak: 0,
+          longestStreak: 0,
+          user: { name: 'Test User', daily_baseline: 15.0 },
+          total_emissions_30d: 0,
+          active_days: 0,
+          category_breakdown: { transportation: 0, electricity: 0, food: 0 }
+        })
+      })
+    );
 
     // Reset module cache and re-require frontend modules
     jest.resetModules();
@@ -270,12 +284,14 @@ describe('Verda Frontend Integration & Accessibility Suite', () => {
       const getDashboardSpy = jest.spyOn(VerdaAPI, 'getDashboard').mockResolvedValue(mockStats);
       const getLogsSpy = jest.spyOn(VerdaAPI, 'getLogs').mockResolvedValue(mockLogs);
       const getRecommendationsSpy = jest.spyOn(VerdaAPI, 'getRecommendations').mockResolvedValue(mockRecs);
+      const getStreakSpy = jest.spyOn(VerdaAPI, 'getStreak').mockResolvedValue({ currentStreak: 1, longestStreak: 5 });
 
       await App.refreshDashboardData(1);
 
       expect(getDashboardSpy).toHaveBeenCalledWith(1);
       expect(getLogsSpy).toHaveBeenCalledWith(1);
       expect(getRecommendationsSpy).toHaveBeenCalledWith(1);
+      expect(getStreakSpy).toHaveBeenCalledWith(1);
 
       // Verify stats and constants were cached
       expect(App.get_cachedDashboardStats()).toBe(mockStats);

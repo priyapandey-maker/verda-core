@@ -113,6 +113,17 @@ describe('Verda REST API Endpoints Integration Suite', () => {
     expect(res.body.improved_trajectory_yearly).toBeDefined();
   });
 
+  test('GET /api/streak - returns current and longest logging streak', async () => {
+    const res = await request(app)
+      .get('/api/streak?user_id=1');
+
+    expect(res.status).toBe(200);
+    expect(res.body.currentStreak).toBeDefined();
+    expect(res.body.longestStreak).toBeDefined();
+    expect(typeof res.body.currentStreak).toBe('number');
+    expect(typeof res.body.longestStreak).toBe('number');
+  });
+
   test('POST /api/coach - fetches sustainability advice with structured and prioritized recommendations', async () => {
     const res = await request(app)
       .post('/api/coach')

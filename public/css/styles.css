@@ -122,11 +122,12 @@ header {
   border-radius: var(--radius-lg);
   padding: 2rem;
   box-shadow: var(--shadow-lg);
-  transition: var(--transition-smooth);
+  transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), border-color 0.3s, box-shadow 0.3s;
 }
 .card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(255, 255, 255, 0.08);
+  transform: translateY(-4px) scale(1.008);
+  border-color: rgba(16, 185, 129, 0.25);
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
 }
 
 .card-title {
@@ -700,7 +701,7 @@ input[type="radio"]:checked + .tab-btn {
 
 .recs-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 1.5rem;
   margin-top: 1rem;
 }
@@ -712,6 +713,22 @@ input[type="radio"]:checked + .tab-btn {
   padding: 2rem;
 }
 
+button:active, .submit-btn:active, .btn-secondary:active, .chat-send-btn:active, .tab-btn:active {
+  transform: scale(0.96) !important;
+  transition: transform 0.05s ease-out !important;
+}
+
+@keyframes recCardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .rec-card {
   background: rgba(15, 23, 42, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.04);
@@ -720,11 +737,13 @@ input[type="radio"]:checked + .tab-btn {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  transition: var(--transition-smooth);
+  transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), border-color 0.3s, box-shadow 0.3s;
+  animation: recCardFadeIn 0.4s ease-out forwards;
 }
 .rec-card:hover {
-  transform: translateY(-2px);
-  border-color: rgba(16, 185, 129, 0.15);
+  transform: translateY(-4px);
+  border-color: rgba(16, 185, 129, 0.25);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
 }
 
 .rec-card-header {
@@ -874,6 +893,16 @@ footer {
     right: 1rem;
     min-width: unset;
   }
+  .equivalence-list {
+    grid-template-columns: 1fr !important;
+  }
+  .input-inline-group {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .input-inline-group button {
+    width: 100%;
+  }
 }
 
 /* ----------------------------------------------------
@@ -905,14 +934,18 @@ footer {
 }
 
 .chat-bubble {
+  position: relative;
   max-width: 85%;
   padding: 0.75rem 1.15rem;
+  padding-bottom: 1.4rem; /* Make room for the timestamp */
   border-radius: 1rem;
   font-size: 0.925rem;
   line-height: 1.5;
   animation: fadeIn 0.25s ease-out;
   word-wrap: break-word;
   white-space: pre-wrap;
+  display: flex;
+  flex-direction: column;
 }
 
 .chat-bubble.bot {
@@ -931,9 +964,24 @@ footer {
   align-self: flex-end;
 }
 
+.chat-timestamp {
+  position: absolute;
+  bottom: 3px;
+  right: 12px;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  opacity: 0.8;
+  font-weight: 400;
+}
+
+.chat-bubble.user .chat-timestamp {
+  color: rgba(15, 23, 42, 0.6);
+}
+
 /* Typing loading indicator bubble */
 .chat-bubble.bot.typing {
   display: flex;
+  flex-direction: row;
   gap: 4px;
   padding: 0.75rem 1.25rem;
   align-items: center;

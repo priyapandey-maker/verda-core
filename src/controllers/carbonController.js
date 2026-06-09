@@ -236,10 +236,99 @@ async function getDashboard(req, res) {
   }
 }
 
+async function getStreak(req, res) {
+  try {
+    const user_id = parseInt(req.query.user_id, 10) || 1;
+    const db = await getDb();
+
+    const user = await db.get('SELECT * FROM users WHERE id = ?', [user_id]);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Get distinct activity dates sorted ascending
+    const logs = await db.all(
+      'SELECT DISTINCT activity_date FROM logs WHERE user_id = ? ORDER BY activity_date ASC',
+      [user_id]
+    );
+
+    if (logs.length === 0) {
+      return res.json({ currentStreak: 0, longestStreak: 0 });
+    }
+
+    const dates = logs.map(l => l.activity_date);
+
+    function parseLocalDate(dateStr) {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      return new Date(Date.UTC(y, m - 1, d));
+    }
+
+    const dayDiff = (date1, date2) => {
+      const diffTime = Math.abs(date2.getTime() - date1.getTime());
+      return Math.round(diffTime / (1000 * 60 * 60 * 24));
+    };
+
+    let longest = 0;
+    let tempStreak = 0;
+
+    for (let i = 0; i < dates.length; i++) {
+      if (i === 0) {
+        tempStreak = 1;
+      } else {
+        const prevDate = parseLocalDate(dates[i - 1]);
+        const currDate = parseLocalDate(dates[i]);
+        const diff = dayDiff(prevDate, currDate);
+        if (diff === 1) {
+          tempStreak++;
+        } else if (diff > 1) {
+          if (tempStreak > longest) {
+            longest = tempStreak;
+          }
+          tempStreak = 1;
+        }
+      }
+    }
+    if (tempStreak > longest) {
+      longest = tempStreak;
+    }
+
+    const todayVal = new Date();
+    const todayStr = `${todayVal.getFullYear()}-${String(todayVal.getMonth() + 1).padStart(2, '0')}-${String(todayVal.getDate()).padStart(2, '0')}`;
+    const yesterdayVal = new Date();
+    yesterdayVal.setDate(todayVal.getDate() - 1);
+    const yesterdayStr = `${yesterdayVal.getFullYear()}-${String(yesterdayVal.getMonth() + 1).padStart(2, '0')}-${String(yesterdayVal.getDate()).padStart(2, '0')}`;
+
+    const lastDateStr = dates[dates.length - 1];
+    let currentStreak = 0;
+    if (lastDateStr === todayStr || lastDateStr === yesterdayStr) {
+      currentStreak = 1;
+      for (let i = dates.length - 1; i > 0; i--) {
+        const prev = parseLocalDate(dates[i - 1]);
+        const curr = parseLocalDate(dates[i]);
+        const diff = dayDiff(prev, curr);
+        if (diff === 1) {
+          currentStreak++;
+        } else {
+          break;
+        }
+      }
+    }
+
+    return res.json({
+      currentStreak,
+      longestStreak: longest
+    });
+  } catch (error) {
+    console.error('Error calculating streak:', error);
+    return res.status(500).json({ error: 'Failed to retrieve streak data' });
+  }
+}
+
 module.exports = {
   logActivity,
   getLogs,
   getDashboard,
+  getStreak,
   calculateEmissions,
   EMISSION_FACTORS,
   CAR_EMISSION_FACTOR,

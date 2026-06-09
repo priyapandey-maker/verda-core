@@ -149,16 +149,16 @@ The JSON structure must match this schema exactly:
     const qLower = question.toLowerCase();
     let detectedCategory = null;
 
-    if (/transport|car|bus|train|drive|driving|travel|fly|flight|commute/i.test(qLower)) {
+    if (/\b(transport|car|cars|bus|train|drive|driving|travel|fly|flight|commute)\b/i.test(qLower)) {
       detectedCategory = 'transportation';
-    } else if (/food|meat|beef|pork|poultry|vegetarian|vegan|meal|eat|diet/i.test(qLower)) {
+    } else if (/\b(food|meat|beef|pork|poultry|vegetarian|vegan|meal|meals|eat|eating|diet)\b/i.test(qLower)) {
       detectedCategory = 'food';
-    } else if (/electricity|power|energy|home|thermostat|grid|utility|vampire|electronics/i.test(qLower)) {
+    } else if (/\b(electricity|power|energy|home|thermostat|grid|utility|vampire|electronics)\b/i.test(qLower)) {
       detectedCategory = 'electricity';
     }
 
     // Category: Transportation
-    if (stats.category_totals.transportation > 0) {
+    if (stats.category_totals.transportation > 0 || detectedCategory === 'transportation') {
       const gasCarCount = logs.filter(l => l.activity === 'gasoline_car').length;
       if (gasCarCount > 2) {
         candidates.push({
@@ -171,18 +171,26 @@ The JSON structure must match this schema exactly:
         });
       } else {
         candidates.push({
-          recommendation: 'Consolidate travel routes',
-          reason: `Transportation contributes to your carbon footprint. Grouping errands reduces cold engine phase emissions.`,
-          estimatedReduction: 10.0,
-          confidence: 90,
-          easeScore: 5,
+          recommendation: 'Use public transport or carpooling',
+          reason: `Swapping solo commutes for bus, train, or carpooling with colleagues significantly decreases travel carbon footprint.`,
+          estimatedReduction: 15.0,
+          confidence: 85,
+          easeScore: 4,
           category: 'transportation'
         });
       }
+      candidates.push({
+        recommendation: 'Walk or bike for short trips under 3km',
+        reason: 'Short driving journeys are highly carbon intensive; walking and cycling are zero-emission alternatives.',
+        estimatedReduction: 8.0,
+        confidence: 92,
+        easeScore: 5,
+        category: 'transportation'
+      });
     }
 
     // Category: Food
-    if (stats.category_totals.food > 0) {
+    if (stats.category_totals.food > 0 || detectedCategory === 'food') {
       const beefCount = logs.filter(l => l.activity === 'beef_meal').length;
       if (beefCount > 2) {
         candidates.push({
@@ -195,18 +203,26 @@ The JSON structure must match this schema exactly:
         });
       } else {
         candidates.push({
-          recommendation: 'Try a Plant-based Monday',
-          reason: `Food is a carbon factor. Eating vegetarian once a week decreases global land use emissions.`,
-          estimatedReduction: 12.0,
-          confidence: 88,
-          easeScore: 5,
+          recommendation: 'Reduce beef and use plant-based alternatives',
+          reason: `Incorporating plant-based meals like tofu, lentils, or meat alternatives reduces emissions compared to beef or pork.`,
+          estimatedReduction: 18.0,
+          confidence: 85,
+          easeScore: 4,
           category: 'food'
         });
       }
+      candidates.push({
+        recommendation: 'Try a Plant-based Monday',
+        reason: `Food is a carbon factor. Eating vegetarian once a week decreases global land use emissions.`,
+        estimatedReduction: 12.0,
+        confidence: 88,
+        easeScore: 5,
+        category: 'food'
+      });
     }
 
     // Category: Electricity
-    if (stats.category_totals.electricity > 0) {
+    if (stats.category_totals.electricity > 0 || detectedCategory === 'electricity') {
       candidates.push({
         recommendation: 'Adjust thermostat by 1 degree',
         reason: `Electricity usage is recorded. Small temperature trims save significant HVAC electricity over a month.`,
@@ -277,9 +293,16 @@ The JSON structure must match this schema exactly:
     // Generate fallback text intro based on parsed category
     let adviceText = `Hello ${user.name}! Based on your data over the last 30 days, I have analyzed your carbon logs and prioritized the top 3 most effective actions for you below.`;
     if (detectedCategory === 'transportation') {
-      adviceText = `Hello ${user.name}! I detected you are asking about transportation. Based on your travel habits, here are specific recommendations to lower your transport emissions:`;
+      adviceText = `Hello Eco Challenger! I detected you are asking about transportation. Based on your travel habits, here are specific recommendations to lower your transport emissions:
+- **Public transport**: Swapping solo driving for public transport (buses, trains) reduces carbon emissions dramatically.
+- **Cycling**: Choose cycling or bicycle commutes to eliminate emissions for short-to-medium trips.
+- **Walking**: Walk for short trips under 3km to eliminate emissions completely.
+- **Carpooling**: Share rides with others (carpooling) to split the emission load per traveler.`;
     } else if (detectedCategory === 'food') {
-      adviceText = `Hello ${user.name}! I noticed you are asking about food or meals. Here are the top ways to optimize your diet's carbon footprint based on your logged meals:`;
+      adviceText = `Hello Eco Challenger! I noticed you are asking about food or meals. Here are the top ways to optimize your diet's carbon footprint based on your logged meals:
+- **Beef reduction**: Avoid or limit beef meals, which carry the highest carbon footprint.
+- **Vegetarian meals**: Swapping meat for vegetarian meals like beans or lentils reduces dietary footprint.
+- **Plant-based alternatives**: Switch to plant-based alternatives or soy products to lower carbon intensity.`;
     } else if (detectedCategory === 'electricity') {
       adviceText = `Hello ${user.name}! Regarding your query about energy or electricity: here are custom tips to minimize household power consumption based on your logged electricity usage:`;
     }
