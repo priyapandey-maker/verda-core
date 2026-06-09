@@ -388,6 +388,20 @@ Verda was intentionally designed to maximize:
 
 ---
 
+# Deployment Instructions
+
+Verda is optimized for instant deployment on cloud application runners like **Railway**, **Heroku**, or **Render**:
+
+1. **GitHub Synchronization**: Link your GitHub repository branch `main` to your hosting platform.
+2. **Environment Variables Config**: Configure the following runtime variables:
+   - `NODE_ENV=production`
+   - `PORT=3000`
+   - `DB_FILE=./src/db/verda.db` (The SQLite database initializes its tables automatically on initial deployment startup)
+   - `GEMINI_API_KEY=your_gemini_api_key` (Optional; rules fallback handles queries gracefully if not provided)
+3. **Build & Start**: The engine automatically detects the Node.js runtime, executes `npm install`, and starts the platform via `npm start`.
+
+---
+
 # Future Enhancements
 
 - Multi-user authentication
