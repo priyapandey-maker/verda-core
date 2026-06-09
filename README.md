@@ -1,187 +1,323 @@
 # Verda 🌱
+ 
 ### AI-Powered Carbon Footprint Awareness Platform
-
-Verda is an intelligent sustainability platform that helps individuals **understand, track, and reduce their carbon footprint** through personalized insights, predictive analytics, habit detection, and AI-powered coaching.
-
-Unlike traditional carbon calculators that provide only a static score, Verda transforms environmental awareness into actionable behavior change through real-time simulations, future impact projections, and explainable recommendations.
-
+ 
+Verda is a lightweight, AI-assisted sustainability platform that helps users **track, understand, and reduce their carbon footprint** through behavioral analytics, predictive modeling, habit detection, and explainable recommendations.
+ 
+Unlike static carbon calculators, Verda transforms environmental data into **actionable behavior change loops** using simulations, projections, and AI-guided coaching.
+ 
 ---
-
-# Problem Statement
-
-Individuals often struggle to understand how their daily activities contribute to their carbon footprint. Existing tools typically provide one-time calculations without offering personalized guidance or helping users explore practical ways to reduce emissions.
-
-Verda addresses this challenge by combining:
-
-- Carbon footprint tracking
+ 
+## Problem Statement
+ 
+Most carbon tracking tools:
+- Provide static scores
+- Lack personalization
+- Do not guide behavioral change
+Verda solves this by integrating:
+- Carbon tracking
 - Habit detection
-- Predictive carbon modeling
-- Real-time lifestyle simulations
-- AI-powered sustainability coaching
-
-into a single user-centric platform.
-
+- Predictive emission modeling
+- Real-time simulation engine
+- AI + rules-based coaching system
 ---
-
-# Key Features
-
-## 📊 Sustainability Score
-
-A dynamic sustainability score that evaluates environmental performance based on:
-
-- Total emissions
-- Daily activity patterns
-- Consistency of tracking
-- Personalized baseline emissions
-
-The score updates automatically as users log new activities.
-
+ 
+## System Architecture
+ 
+```text
+Frontend (Vanilla JS)
+        │
+        ▼
+Express Router Layer
+        │
+        ▼
+Controller Layer (HTTP + Zod Validation Only)
+        │
+        ▼
+Service Layer (Business Logic Only)
+        │
+        ▼
+Repository Layer (Database Access Only)
+        │
+        ▼
+SQLite Database
+        │
+        ├── Habit Engine
+        ├── Carbon Engine
+        ├── Recommendation Engine
+        └── Twin Engine
+        │
+        ▼
+AI Layer (Gemini / Rules Engine Fallback)
+```
+ 
+### Architecture Contract (STRICT)
+ 
+| Layer | Responsibilities | Forbidden |
+|---|---|---|
+| **Controller** | HTTP requests/responses · Zod validation · Calls service layer | ❌ Business logic · ❌ DB access |
+| **Service** | Business logic · Domain rules · Calls repositories | ❌ HTTP handling · ❌ DB queries |
+| **Repository** | SQLite queries · Pure data access | ❌ Business logic · ❌ Service imports |
+ 
+### Dependency Flow
+ 
+```text
+Controller → Service → Repository → Database
+```
+ 
+### Forbidden Patterns
+ 
+- ❌ Business logic inside controllers
+- ❌ Direct DB access from services
+- ❌ Unvalidated external input
+- ❌ Circular dependencies
+- ❌ Silent error suppression
 ---
-
-## 🔍 Habit Detection Engine
-
-Verda automatically identifies recurring behaviors using SQLite aggregation queries.
-
-Examples:
-
-- Frequent car commuting
-- High electricity consumption
-- Repeated high-emission meal choices
-
-These habits become inputs for recommendations and coaching.
-
----
-
-## 🌍 Carbon Twin
-
-The Carbon Twin acts as a digital representation of the user's environmental impact.
-
-It generates:
-
-- Current annual carbon trajectory
-- Improved future trajectory
-- Potential yearly carbon savings
-
-allowing users to visualize the long-term impact of their habits.
-
----
-
-## 🎛️ What-If Simulator
-
-An interactive simulation engine that enables users to instantly explore how lifestyle changes affect future emissions.
-
-Users can experiment with:
-
-- Public transport adoption
-- Vegetarian meal frequency
-- Electricity conservation
-
-Results update in real time without page refreshes.
-
----
-
-## 🤖 AI Sustainability Coach
-
-The AI Coach analyzes:
-
-- Recent activity history
-- Emission patterns
-- Habit trends
-- Carbon Twin projections
-
-to provide personalized sustainability guidance.
-
-### AI Resilience
-
-Verda remains fully functional even without AI services.
-
-When a Gemini API key is unavailable, the system automatically switches to a built-in expert rules engine that generates context-aware recommendations.
-
----
-
-## 💡 Explainable Recommendations
-
-Every recommendation includes:
-
-- Reasoning
+ 
+## Core Features
+ 
+### 📊 Sustainability Score
+ 
+Dynamic score based on:
+- Emission totals
+- Activity consistency
+- Behavioral patterns
+- Baseline comparison
+### 🔍 Habit Detection Engine
+ 
+Automatically detects behavioral patterns using aggregation logic:
+- Transport usage patterns
+- Energy consumption trends
+- Dietary emission patterns
+### 🌍 Carbon Twin
+ 
+Predictive model that generates:
+- Current emission trajectory
+- Optimized future trajectory
+- Annual carbon savings projection
+### 🎛️ What-If Simulator
+ 
+Real-time simulation engine for lifestyle changes:
+- Transport switching impact
+- Diet modifications
+- Energy usage optimization
+### 🤖 AI Sustainability Coach
+ 
+Generates personalized recommendations using:
+- User history
+- Habit patterns
+- Carbon projections
+**Fallback Mode:** If AI is unavailable, a deterministic rules engine ensures full functionality.
+ 
+### 💡 Explainable Recommendations
+ 
+Each recommendation includes:
+- Reason
 - Estimated CO₂ reduction
 - Priority level
 - Expected impact
-
-This ensures users understand why actions are recommended and what benefits they can expect.
-
 ---
-
-# System Architecture
-
-```text
-User
- │
- ▼
-Frontend (HTML + CSS + Vanilla JavaScript)
- │
- ▼
-Express REST API
- │
- ▼
-SQLite Database
- │
- ├── Habit Detection Engine
- ├── Sustainability Score Engine
- ├── Carbon Twin Engine
- └── Recommendation Engine
-          │
-          ▼
- AI Coach (Gemini / Rules-Based Fallback)
-```
-
----
-
-# Design Principles
-
-### Lightweight
-
-- No frontend framework overhead
-- Fast startup time
+ 
+## Design Principles
+ 
+**Lightweight**
+- No frontend frameworks
 - Minimal dependencies
-
-### Secure
-
-- Parameterized SQL queries
+- Fast startup time
+**Secure**
+- Parameterized queries
 - Rate limiting
 - Security headers
-- Environment variable isolation
-
-### Accessible
-
+- Environment isolation
+**Accessible**
 - Semantic HTML
-- Keyboard navigation
 - ARIA labels
-- WCAG AA compliant design
-
-### AI-Enhanced, Not AI-Dependent
-
-Core platform functionality remains operational even without external AI services.
-
+- Keyboard navigation
+- WCAG AA compliance
+**AI-Independent Core** — System remains fully functional without external AI services.
+ 
 ---
-
-# Technical Stack
-
+ 
+## Technical Stack
+ 
 | Layer | Technology |
-|---------|------------|
-| Frontend | HTML5, CSS3, Vanilla JavaScript |
+|---|---|
+| Frontend | HTML5, CSS3, Vanilla JS |
 | Backend | Node.js, Express |
 | Database | SQLite |
-| AI Integration | Google Gemini |
+| AI | Gemini API + Rules Engine |
 | Testing | Jest, Supertest |
-| Security | Helmet, CORS, Express Rate Limit |
-
+| Security | Helmet, CORS, Zod |
+| CI/CD | GitHub Actions |
+ 
 ---
-
-# Project Structure
-
+ 
+## Validation & Data Safety
+ 
+All external inputs **must** pass Zod schema validation before entering the service layer.
+ 
+Guarantees:
+- Runtime type safety
+- Input sanitization
+- Schema enforcement
+---
+ 
+## Testing Strategy
+ 
+### Coverage Targets
+ 
+| Metric | Target |
+|---|---|
+| Statement Coverage | ≥ 98% |
+| Branch Coverage | ≥ 95% |
+ 
+### Test Structure
+ 
+- **Unit Tests** → Services
+- **Integration Tests** → Controllers
+- **Edge Tests** → Validation & Error Handling
+### Required per endpoint
+ 
+- ✅ Success case
+- ✅ Failure case
+- ✅ Validation failure case
+---
+ 
+## CI/CD Enforcement
+ 
+Pipeline enforces (single source of truth):
+ 
+| Check | Threshold |
+|---|---|
+| ESLint | Zero warnings allowed |
+| Jest | All tests must pass |
+| Branch Coverage | ≥ 95% (hard fail) |
+ 
+> Any violation → build failure
+ 
+---
+ 
+## Security Model
+ 
+- Helmet HTTP headers
+- Express rate limiting
+- Parameterized SQL queries
+- Zod runtime validation
+- Environment variable isolation
+---
+ 
+## Performance Design
+ 
+- SQLite local persistence
+- No frontend framework overhead
+- Minimal API payload size
+- Optimized async execution patterns
+---
+ 
+## Refactoring Standards
+ 
+### JSDoc Type System
+ 
+Core entities defined using `@typedef`, `@param`, `@returns` for:
+- Static analysis compatibility
+- Type-safe runtime behavior
+### Error Handling Model
+ 
+Centralized error system with:
+- Standardized JSON responses
+- No duplicate try/catch formatting
+- Unified error middleware
+### Constant Management
+ 
+All constants centralized in `src/config/constants.js` — prevents magic numbers and hardcoded emission factors.
+ 
+---
+ 
+## API Structure
+ 
+All endpoints prefixed with `/api`
+ 
+### Carbon Tracking
+ 
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/logs` | Create activity log |
+| `GET` | `/api/logs` | Retrieve activity history |
+| `GET` | `/api/dashboard` | Sustainability score + analytics |
+ 
+### Analysis
+ 
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/habits` | Detect behavioral patterns |
+| `GET` | `/api/recommendations` | Personalized recommendations |
+| `GET` | `/api/twin` | Carbon Twin projections |
+ 
+### AI Coach
+ 
+| Method | Endpoint | Description |
+|---|---|---|
+| `POST` | `/api/coach` | AI-guided coaching session |
+ 
+---
+ 
+## Getting Started
+ 
+### Prerequisites
+ 
+- Node.js 18+
+### Installation
+ 
+```bash
+npm install
+```
+ 
+### Environment Variables
+ 
+Create a `.env` file (use `.env.example` as template):
+ 
+```env
+PORT=3000
+DB_FILE=./src/db/verda.db
+GEMINI_API_KEY=your_key_here
+```
+ 
+> `GEMINI_API_KEY` is optional — the rules engine fallback activates automatically when absent.
+ 
+### Start
+ 
+```bash
+npm start
+```
+ 
+Application available at `http://localhost:3000`
+ 
+### Test
+ 
+```bash
+npm test
+```
+ 
+---
+ 
+## Deployment
+ 
+Supported platforms: Railway · Render · Heroku
+ 
+1. Link the `main` branch to your hosting platform
+2. Set environment variables (`PORT`, `DB_FILE`, `GEMINI_API_KEY`)
+3. Platform auto-runs `npm install && npm start`
+The SQLite database initializes its schema automatically on first startup.
+ 
+---
+ 
+## Project Structure
+ 
 ```text
 verda-core/
+├── .github/
+│   └── workflows/
+│       └── ci.yml
 ├── public/
 │   ├── css/
 │   │   ├── variables.css
@@ -191,7 +327,6 @@ verda-core/
 │   │   ├── dom.js
 │   │   └── app.js
 │   └── index.html
-│
 ├── src/
 │   ├── config/
 │   │   └── constants.js
@@ -200,6 +335,12 @@ verda-core/
 │   │   ├── habitController.js
 │   │   ├── recommendationController.js
 │   │   └── coachController.js
+│   ├── errors/
+│   │   └── AppError.js
+│   ├── repositories/
+│   │   ├── carbonRepository.js
+│   │   ├── habitRepository.js
+│   │   └── logRepository.js
 │   ├── services/
 │   │   ├── carbonService.js
 │   │   ├── habitService.js
@@ -216,234 +357,49 @@ verda-core/
 │   ├── routes/
 │   │   └── api.js
 │   ├── db/
-│   │   ├── schema.sql
+│   │   ├── migrations/
+│   │   │   └── 001_initial_schema.sql
 │   │   └── index.js
 │   └── server.js
-│
 ├── tests/
+│   ├── carbonService.test.js
+│   ├── habitService.test.js
+│   ├── recommendationService.test.js
+│   ├── coachService.test.js
 │   ├── api.test.js
-│   ├── carbonEngine.test.js
-│   ├── edgeCases.test.js
-│   ├── frontend.test.js
-│   ├── habitDetection.test.js
-│   └── recommendationEngine.test.js
-│
+│   └── edgeCases.test.js
+├── .env.example
+├── .gitignore
 ├── eslint.config.js
 ├── package.json
 └── README.md
 ```
-
+ 
 ---
-
-# Refactoring & Design Decisions
-
-### Clean Architecture & Modularity
-All database querying, prompt templates, and math functions have been extracted out of Express controller endpoints and delegated into a modular service layer under `src/services/`. The controllers are kept focused, lightweight (under 100 lines), and simple.
-
-### Centralized Error Handling
-Standardized error mapping is implemented via `src/middleware/errorHandler.js`. Operational errors and system failures are intercepted cleanly, preventing uncaught Promise rejections and consolidating error formatting to output uniform JSON responses `{ error: message }` with appropriate status codes (400, 404, 500) without duplicating catch blocks.
-
-### Validation Layer
-Parameters, request payloads, and query filters are validated using helper functions inside `src/utils/validators.js` before reaching service logic.
-
-### Elimination of Magic Numbers
-Coerced coefficients, math constants, and emission factors are centralized in `src/config/constants.js`.
-
-### Testing and coverage
-Validated using 6 suites (77/77 tests passing). The codebase maintains **99.14% statement coverage** with zero regression.
-
----
-
-# Quality Metrics
-
-## ✅ Testing
-
-- 85 Automated Tests Passing
-- 99.14% Statement Coverage
-- 90.10% Branch Coverage
-
----
-
-## 🔒 Security
-
-- Helmet Security Headers
-- Express Rate Limiting
-- Parameterized SQLite Queries
-- Input Validation
-- Environment Variable Isolation
-
----
-
-## ♿ Accessibility
-
-- Semantic HTML
-- Keyboard Navigation
-- Skip-to-Content Support
-- ARIA Labels
-- WCAG AA Color Compliance
-
----
-
-## ⚡ Performance
-
-- Repository Size: 237 KiB
-- SQLite Local Persistence
-- Zero Frontend Framework Overhead
-- Real-Time Client-Side Simulations
-
----
-
-# Getting Started
-
-## Prerequisites
-
-- Node.js 18+
-
----
-
-## Installation
-
-```bash
-npm install
-```
-
----
-
-## Environment Variables
-
-Create a `.env` file:
-
-```env
-PORT=3000
-DB_FILE=./src/db/verda.db
-GEMINI_API_KEY=your_api_key_here
-```
-
-### Optional
-
-If no Gemini API key is provided, Verda automatically uses its built-in expert recommendation engine.
-
----
-
-## Start Application
-
-```bash
-npm start
-```
-
-Application will be available at:
-
-```text
-http://localhost:3000
-```
-
----
-
-## Run Tests
-
-```bash
-npm test
-```
-
----
-
-# REST API
-
-All endpoints are prefixed with:
-
-```text
-/api
-```
-
-## Carbon Tracking
-
-### POST /api/logs
-
-Create a new carbon activity log.
-
-### GET /api/logs
-
-Retrieve activity history.
-
-### GET /api/dashboard
-
-Retrieve sustainability score and 30-day analytics.
-
----
-
-## Analysis & Recommendations
-
-### GET /api/habits
-
-Detect recurring user habits.
-
-### GET /api/recommendations
-
-Generate personalized recommendations.
-
-### GET /api/twin
-
-Retrieve Carbon Twin projections.
-
----
-
-## AI Coach
-
-### POST /api/coach
-
-Generate personalized sustainability guidance using:
-
-- Recent activity history
-- Habit patterns
-- Carbon categories
-- Carbon Twin projections
-
-Returns either:
-
-- Gemini-generated insights
-- Rules-engine recommendations
-
-depending on system configuration.
-
----
-
-# Hackathon Evaluation Alignment
-
-Verda was intentionally designed to maximize:
-
-✅ Code Quality  
-✅ Security  
-✅ Efficiency  
-✅ Testing Coverage  
-✅ Accessibility  
-✅ Real-World Usability  
-✅ Explainable AI  
-✅ Sustainable Behavior Change
-
----
-
-# Deployment Instructions
-
-Verda is optimized for instant deployment on cloud application runners like **Railway**, **Heroku**, or **Render**:
-
-1. **GitHub Synchronization**: Link your GitHub repository branch `main` to your hosting platform.
-2. **Environment Variables Config**: Configure the following runtime variables:
-   - `NODE_ENV=production`
-   - `PORT=3000`
-   - `DB_FILE=./src/db/verda.db` (The SQLite database initializes its tables automatically on initial deployment startup)
-   - `GEMINI_API_KEY=your_gemini_api_key` (Optional; rules fallback handles queries gracefully if not provided)
-3. **Build & Start**: The engine automatically detects the Node.js runtime, executes `npm install`, and starts the platform via `npm start`.
-
----
-
-# Future Enhancements
-
+ 
+## Future Enhancements
+ 
 - Multi-user authentication
-- Community sustainability challenges
-- Carbon offset marketplace integrations
+- Community challenges
+- Carbon offset marketplace
 - Renewable energy recommendations
-- Advanced AI forecasting models
-
+- Advanced forecasting models
 ---
-
-**Built for the Carbon Footprint Awareness Platform Challenge 🌱**
+ 
+## Hackathon Alignment
+ 
+Optimized for:
+ 
+| Criterion | Implementation |
+|---|---|
+| Code Quality | Clean layered architecture, AST-clean structure |
+| Security | Zod validation boundaries, strict input sanitization |
+| Efficiency | Low overhead, SQLite local persistence |
+| Testing | ≥ 95% branch coverage enforced by CI |
+| Maintainability | Controller → Service → Repository separation |
+| Explainability | Transparent AI reasoning, rules-engine fallback |
+ 
+---
+ 
+*Built for the Carbon Footprint Awareness Platform Challenge 🌱*
+ 
